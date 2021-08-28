@@ -64,34 +64,63 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 
 	protected static final String PROPERTIES_PATH = "META-INF/spring-autoconfigure-metadata.properties";
 
+	/**
+	 * 注解名和全类名的映射
+	 *
+	 * KEY：注解名
+	 * VALUE：全类名
+	 */
 	private final Map<String, String> annotations;
 
+	/**
+	 * 注解名和 ValueExtractor 的映射
+	 *
+	 * KEY：注解名
+	 */
 	private final Map<String, ValueExtractor> valueExtractors;
 
+	/**
+	 * 扫描和处理注解（Annotation），生成的 Properties 对象
+	 */
 	private final Map<String, String> properties = new TreeMap<>();
 
 	public AutoConfigureAnnotationProcessor() {
+		// <1> 初始化 annotations 属性
 		Map<String, String> annotations = new LinkedHashMap<>();
 		addAnnotations(annotations);
 		this.annotations = Collections.unmodifiableMap(annotations);
+		// <2> 初始化 valueExtractors属性
 		Map<String, ValueExtractor> valueExtractors = new LinkedHashMap<>();
 		addValueExtractors(valueExtractors);
 		this.valueExtractors = Collections.unmodifiableMap(valueExtractors);
 	}
 
+	/**
+	 * annotations 属性，注解名和全类名的映射。
+	 * 在 <1> 处，调用 #addAnnotations(Map<String, String> annotations) 方法，进行初始化。
+	 * @param annotations
+	 */
 	protected void addAnnotations(Map<String, String> annotations) {
+		// 条件
 		annotations.put("ConditionalOnClass", "org.springframework.boot.autoconfigure.condition.ConditionalOnClass");
 		annotations.put("ConditionalOnBean", "org.springframework.boot.autoconfigure.condition.ConditionalOnBean");
 		annotations.put("ConditionalOnSingleCandidate",
 				"org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate");
 		annotations.put("ConditionalOnWebApplication",
 				"org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication");
+		// 排序
 		annotations.put("AutoConfigureBefore", "org.springframework.boot.autoconfigure.AutoConfigureBefore");
 		annotations.put("AutoConfigureAfter", "org.springframework.boot.autoconfigure.AutoConfigureAfter");
 		annotations.put("AutoConfigureOrder", "org.springframework.boot.autoconfigure.AutoConfigureOrder");
 	}
 
+	/**
+	 * valueExtractors 属性，注解名和 ValueExtractor 的映射。
+	 * 在 <2> 处，调用 #addValueExtractors(Map<String, ValueExtractor> attributes) 方法，进行初始化。
+	 * @param attributes
+	 */
 	private void addValueExtractors(Map<String, ValueExtractor> attributes) {
+
 		attributes.put("ConditionalOnClass", new OnClassConditionValueExtractor());
 		attributes.put("ConditionalOnBean", new OnBeanConditionValueExtractor());
 		attributes.put("ConditionalOnSingleCandidate", new OnBeanConditionValueExtractor());
@@ -189,31 +218,55 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		}
 	}
 
+	/**
+	 * ValueExtractor ，是 AutoConfigureAnnotationProcessor 的内部接口，值提取器接口。
+	 */
 	@FunctionalInterface
 	private interface ValueExtractor {
 
+		/**
+		 * 从注解中，获得对应的值的数组
+		 *
+		 * @param annotation 注解
+		 * @return 值的数组
+		 */
 		List<Object> getValues(AnnotationMirror annotation);
 
+		/**
+		 * 创建 NamedValuesExtractor 对象
+		 * @param names 从注解的指定 names 中，提取值们
+		 * @return NamedValuesExtractor 对象
+		 */
 		static ValueExtractor allFrom(String... names) {
 			return new NamedValuesExtractor(names);
 		}
 
 	}
 
+	/**
+	 *AbstractValueExtractor ，是 AutoConfigureAnnotationProcessor 的内部类，
+	 *实现 ValueExtractor 接口，ValueExtractor 抽象实现类。
+	 *提供了从 AnnotationValue 读取值的公用方法
+	 */
 	private abstract static class AbstractValueExtractor implements ValueExtractor {
+
 
 		@SuppressWarnings("unchecked")
 		protected Stream<Object> extractValues(AnnotationValue annotationValue) {
+			//注解值为空返回空
 			if (annotationValue == null) {
 				return Stream.empty();
 			}
 			Object value = annotationValue.getValue();
+			//注解值为数组，遍历数组，逐个获取值
 			if (value instanceof List) {
 				return ((List<AnnotationValue>) value).stream()
 						.map((annotation) -> extractValue(annotation.getValue()));
 			}
+			//注解值非数组，直接提取值
 			return Stream.of(extractValue(value));
 		}
+
 
 		private Object extractValue(Object value) {
 			if (value instanceof DeclaredType) {
@@ -224,6 +277,10 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 
 	}
 
+	/**
+	 * NamedValuesExtractor ，是 AutoConfigureAnnotationProcessor 的内部类，
+	 * 继承 AbstractValueExtractor 抽象类，读取 names 的 ValueExtractor 实现类。
+	 */
 	private static class NamedValuesExtractor extends AbstractValueExtractor {
 
 		private final Set<String> names;
@@ -235,6 +292,7 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		@Override
 		public List<Object> getValues(AnnotationMirror annotation) {
 			List<Object> result = new ArrayList<>();
+			// 遍历 names 数组，读取 name 对应的值，添加到 result 中
 			annotation.getElementValues().forEach((key, value) -> {
 				if (this.names.contains(key.getSimpleName().toString())) {
 					extractValues(value).forEach(result::add);
