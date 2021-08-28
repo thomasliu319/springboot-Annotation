@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Implementation-Title: Starter for testing Spring Boot applications wit
+ h libraries including JUnit Jupiter, Hamcrest and Mockito
+Automatic-Module-Name: spring.boot.starter.test
+Implementation-Version: 2.6.0-SNAPSHOT
+Built-By: Spring
+Spring-Boot-Jar-Type: dependencies-starter
+Build-Jdk-Spec: 1.8
+

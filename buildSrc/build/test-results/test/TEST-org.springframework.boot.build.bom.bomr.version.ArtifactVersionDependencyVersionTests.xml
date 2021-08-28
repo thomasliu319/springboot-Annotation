@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" tests="17" skipped="0" failures="0" errors="0" timestamp="2021-07-26T14:47:07" hostname="3f147368-39fa-4804-633f-d9bb3cc75a14" time="0.008">
+  <properties/>
+  <testcase name="parseWhenVersionIsNotAMavenVersionShouldReturnNull()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isNewerThanWhenInputIsOlderMinorShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.001"/>
+  <testcase name="isSameMinorAndNewerThanWhenMinorIsNewerShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMinorAndNewerThanWhenPatchIsNewerShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMajorAndNewerThanWhenMinorIsNewerShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.001"/>
+  <testcase name="isSameMinorAndNewerThanWhenVersionsAreTheSameShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMinorAndNewerThanWhenPatchIsOlderShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isNewerThanWhenInputIsOlderPatchShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMajorAndNewerThanWhenMajorIsOlderShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isNewerThanWhenInputIsNewerMajorShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.001"/>
+  <testcase name="isNewerThanWhenInputIsOlderMajorShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="parseWhenVersionIsAMavenVersionShouldReturnAVersion()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMajorAndNewerThanWhenPatchIsNewerShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMinorAndNewerThanWhenMajorIsNewerShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMajorAndNewerThanWhenMinorIsOlderShouldReturnTrue()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.001"/>
+  <testcase name="isSameMinorAndNewerThanWhenMinorIsOlderShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.0"/>
+  <testcase name="isSameMajorAndNewerThanWhenMajorIsNewerShouldReturnFalse()" classname="org.springframework.boot.build.bom.bomr.version.ArtifactVersionDependencyVersionTests" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
