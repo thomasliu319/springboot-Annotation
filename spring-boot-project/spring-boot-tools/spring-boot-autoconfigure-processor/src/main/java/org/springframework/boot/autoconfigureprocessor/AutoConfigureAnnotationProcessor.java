@@ -137,9 +137,11 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 
 	@Override
 	public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+		// <1> 遍历 annotations 集合，逐个处理
 		for (Map.Entry<String, String> entry : this.annotations.entrySet()) {
 			process(roundEnv, entry.getKey(), entry.getValue());
 		}
+		// <2> 处理完成，写到文件 PROPERTIES_PATH 中
 		if (roundEnv.processingOver()) {
 			try {
 				writeProperties();
@@ -151,6 +153,13 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		return false;
 	}
 
+	/**
+	 * <1> 处，调用 #process(RoundEnvironment roundEnv, String propertyKey, String annotationName) 方法，
+	 * 遍历 annotations 集合，逐个处理，添加到 properties 中。
+	 * @param roundEnv
+	 * @param propertyKey
+	 * @param annotationName
+	 */
 	private void process(RoundEnvironment roundEnv, String propertyKey, String annotationName) {
 		TypeElement annotationType = this.processingEnv.getElementUtils().getTypeElement(annotationName);
 		if (annotationType != null) {
@@ -160,13 +169,24 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		}
 	}
 
+	/**
+	 *
+	 * @param element
+	 * @param propertyKey=注解名
+	 * @param annotationName=全类名
+	 */
 	private void processElement(Element element, String propertyKey, String annotationName) {
 		try {
+			// 获得自动配置类的全类名。例如说：org.springframework.boot.autoconfigure.transaction.TransactionAutoConfiguration
 			String qualifiedName = Elements.getQualifiedName(element);
+			// 获得 AnnotationMirror 对象
 			AnnotationMirror annotation = getAnnotation(element, annotationName);
 			if (qualifiedName != null && annotation != null) {
+				// 获得值
 				List<Object> values = getValues(propertyKey, annotation);
+				// 添加到 properties 中
 				this.properties.put(qualifiedName + "." + propertyKey, toCommaDelimitedString(values));
+				// 添加到 properties 中
 				this.properties.put(qualifiedName, "");
 			}
 		}
@@ -175,6 +195,12 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		}
 	}
 
+	/**
+	 * 获得 AnnotationMirror 对象
+	 * @param element
+	 * @param type
+	 * @return
+	 */
 	private AnnotationMirror getAnnotation(Element element, String type) {
 		if (element != null) {
 			for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
@@ -186,6 +212,11 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		return null;
 	}
 
+	/**
+	 * 拼接值
+	 * @param list
+	 * @return
+	 */
 	private String toCommaDelimitedString(List<Object> list) {
 		StringBuilder result = new StringBuilder();
 		for (Object item : list) {
@@ -195,6 +226,12 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		return result.toString();
 	}
 
+	/**
+	 * 获得值
+	 * @param propertyKey
+	 * @param annotation
+	 * @return
+	 */
 	private List<Object> getValues(String propertyKey, AnnotationMirror annotation) {
 		ValueExtractor extractor = this.valueExtractors.get(propertyKey);
 		if (extractor == null) {
@@ -203,6 +240,10 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		return extractor.getValues(annotation);
 	}
 
+	/**
+	 * <2> 处，调用 #writeProperties() 方法，处理完成，写到文件 PROPERTIES_PATH 中。
+	 * @throws IOException
+	 */
 	private void writeProperties() throws IOException {
 		if (!this.properties.isEmpty()) {
 			Filer filer = this.processingEnv.getFiler();
@@ -303,16 +344,23 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 
 	}
 
+	/**
+	 * OnBeanConditionValueExtractor ，是 AutoConfigureAnnotationProcessor 的内部类，继承 AbstractValueExtractor 抽象类，
+	 * 读取 @ConditionalOnBean 和 @ConditionalOnSingleCandidate 注解的 ValueExtractor 实现类。
+	 */
 	private static class OnBeanConditionValueExtractor extends AbstractValueExtractor {
 
 		@Override
 		public List<Object> getValues(AnnotationMirror annotation) {
+			/// 遍历注解的元素们，读取到 attributes 中
 			Map<String, AnnotationValue> attributes = new LinkedHashMap<>();
 			annotation.getElementValues()
 					.forEach((key, value) -> attributes.put(key.getSimpleName().toString(), value));
+			// 如果 "name" 对应的值为空，返回空
 			if (attributes.containsKey("name")) {
 				return Collections.emptyList();
 			}
+			// 读取 "value"、`"type"` 对应的值，添加到 result 中
 			List<Object> result = new ArrayList<>();
 			extractValues(attributes.get("value")).forEach(result::add);
 			extractValues(attributes.get("type")).forEach(result::add);
@@ -321,8 +369,13 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 
 	}
 
+	/**
+	 * OnClassConditionValueExtractor ，是 AutoConfigureAnnotationProcessor 的内部类，继承 NamedValuesExtractor 类，
+	 * 读取 @OnClassConditionValueExtractor 注解的 ValueExtractor 实现类。
+	 */
 	private static class OnClassConditionValueExtractor extends NamedValuesExtractor {
 
+		// 读取 "value", "name" 的值
 		OnClassConditionValueExtractor() {
 			super("value", "name");
 		}
@@ -330,6 +383,7 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 		@Override
 		public List<Object> getValues(AnnotationMirror annotation) {
 			List<Object> values = super.getValues(annotation);
+			// 排序
 			values.sort(this::compare);
 			return values;
 		}
