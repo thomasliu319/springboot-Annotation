@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
 import org.springframework.stereotype.Controller;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.config.annotation.DelegatingWebSocketMessageBrokerConfiguration;
@@ -92,9 +93,7 @@ class WebSocketMessagingAutoConfigurationTests {
 
 	@AfterEach
 	void tearDown() {
-		if (this.context.isActive()) {
-			this.context.close();
-		}
+		this.context.close();
 		this.sockJsClient.stop();
 	}
 
@@ -137,10 +136,13 @@ class WebSocketMessagingAutoConfigurationTests {
 		return customizedConverters;
 	}
 
+	@SuppressWarnings("unchecked")
 	private List<MessageConverter> getDefaultConverters() {
 		DelegatingWebSocketMessageBrokerConfiguration configuration = new DelegatingWebSocketMessageBrokerConfiguration();
-		CompositeMessageConverter compositeDefaultConverter = configuration.brokerMessageConverter();
-		return compositeDefaultConverter.getConverters();
+		// We shouldn't usually call this method directly since it's on a non-proxy config
+		CompositeMessageConverter compositeDefaultConverter = ReflectionTestUtils.invokeMethod(configuration,
+				"brokerMessageConverter");
+		return (List<MessageConverter>) ReflectionTestUtils.getField(compositeDefaultConverter, "converters");
 	}
 
 	private Object performStompSubscription(String topic) throws Throwable {

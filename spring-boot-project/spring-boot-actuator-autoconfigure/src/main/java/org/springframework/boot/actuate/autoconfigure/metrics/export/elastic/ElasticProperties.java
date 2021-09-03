@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,17 +37,13 @@ public class ElasticProperties extends StepRegistryProperties {
 	/**
 	 * Index to export metrics to.
 	 */
-	private String index = "micrometer-metrics";
+	private String index = "metrics";
 
 	/**
-	 * Index date format used for rolling indices. Appended to the index name.
+	 * Index date format used for rolling indices. Appended to the index name, preceded by
+	 * a '-'.
 	 */
 	private String indexDateFormat = "yyyy-MM";
-
-	/**
-	 * Prefix to separate the index name from the date format used for rolling indices.
-	 */
-	private String indexDateSeparator = "-";
 
 	/**
 	 * Name of the timestamp field.
@@ -62,17 +58,12 @@ public class ElasticProperties extends StepRegistryProperties {
 	/**
 	 * Login user of the Elastic server.
 	 */
-	private String userName;
+	private String userName = "";
 
 	/**
 	 * Login password of the Elastic server.
 	 */
-	private String password;
-
-	/**
-	 * Ingest pipeline name. By default, events are not pre-processed.
-	 */
-	private String pipeline;
+	private String password = "";
 
 	public String getHost() {
 		return this.host;
@@ -96,14 +87,6 @@ public class ElasticProperties extends StepRegistryProperties {
 
 	public void setIndexDateFormat(String indexDateFormat) {
 		this.indexDateFormat = indexDateFormat;
-	}
-
-	public String getIndexDateSeparator() {
-		return this.indexDateSeparator;
-	}
-
-	public void setIndexDateSeparator(String indexDateSeparator) {
-		this.indexDateSeparator = indexDateSeparator;
 	}
 
 	public String getTimestampFieldName() {
@@ -136,14 +119,6 @@ public class ElasticProperties extends StepRegistryProperties {
 
 	public void setPassword(String password) {
 		this.password = password;
-	}
-
-	public String getPipeline() {
-		return this.pipeline;
-	}
-
-	public void setPipeline(String pipeline) {
-		this.pipeline = pipeline;
 	}
 
 }

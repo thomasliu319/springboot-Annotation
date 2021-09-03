@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.boot.cli.compiler.maven;
 
 import java.io.File;
+import java.lang.reflect.Field;
 
 import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.building.DefaultSettingsBuilderFactory;
@@ -82,7 +83,21 @@ public class MavenSettingsReader {
 	}
 
 	private SettingsDecrypter createSettingsDecrypter() {
-		return new DefaultSettingsDecrypter(new SpringBootSecDispatcher());
+		SettingsDecrypter settingsDecrypter = new DefaultSettingsDecrypter();
+		setField(DefaultSettingsDecrypter.class, "securityDispatcher", settingsDecrypter,
+				new SpringBootSecDispatcher());
+		return settingsDecrypter;
+	}
+
+	private void setField(Class<?> sourceClass, String fieldName, Object target, Object value) {
+		try {
+			Field field = sourceClass.getDeclaredField(fieldName);
+			field.setAccessible(true);
+			field.set(target, value);
+		}
+		catch (Exception ex) {
+			throw new IllegalStateException("Failed to set field '" + fieldName + "' on '" + target + "'", ex);
+		}
 	}
 
 	private class SpringBootSecDispatcher extends DefaultSecDispatcher {

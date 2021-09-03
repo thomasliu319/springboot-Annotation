@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
-import org.springframework.boot.autoconfigure.h2.H2ConsoleProperties.Settings;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -49,7 +48,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = Type.SERVLET)
 @ConditionalOnClass(WebServlet.class)
-@ConditionalOnProperty(prefix = "spring.h2.console", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.h2.console", name = "enabled", havingValue = "true", matchIfMissing = false)
 @AutoConfigureAfter(DataSourceAutoConfiguration.class)
 @EnableConfigurationProperties(H2ConsoleProperties.class)
 public class H2ConsoleAutoConfiguration {
@@ -62,7 +61,13 @@ public class H2ConsoleAutoConfiguration {
 		String path = properties.getPath();
 		String urlMapping = path + (path.endsWith("/") ? "*" : "/*");
 		ServletRegistrationBean<WebServlet> registration = new ServletRegistrationBean<>(new WebServlet(), urlMapping);
-		configureH2ConsoleSettings(registration, properties.getSettings());
+		H2ConsoleProperties.Settings settings = properties.getSettings();
+		if (settings.isTrace()) {
+			registration.addInitParameter("trace", "");
+		}
+		if (settings.isWebAllowOthers()) {
+			registration.addInitParameter("webAllowOthers", "");
+		}
 		dataSource.ifAvailable((available) -> {
 			try (Connection connection = available.getConnection()) {
 				logger.info("H2 console available at '" + path + "'. Database available at '"
@@ -73,18 +78,6 @@ public class H2ConsoleAutoConfiguration {
 			}
 		});
 		return registration;
-	}
-
-	private void configureH2ConsoleSettings(ServletRegistrationBean<WebServlet> registration, Settings settings) {
-		if (settings.isTrace()) {
-			registration.addInitParameter("trace", "");
-		}
-		if (settings.isWebAllowOthers()) {
-			registration.addInitParameter("webAllowOthers", "");
-		}
-		if (settings.getWebAdminPassword() != null) {
-			registration.addInitParameter("webAdminPassword", settings.getWebAdminPassword());
-		}
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,8 @@ import java.net.URLStreamHandlerFactory;
 import java.security.Permission;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Supplier;
 import java.util.jar.Manifest;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 
 import org.springframework.boot.loader.data.RandomAccessData;
@@ -53,7 +49,7 @@ import org.springframework.boot.loader.data.RandomAccessDataFile;
  * @author Andy Wilkinson
  * @since 1.0.0
  */
-public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.JarEntry> {
+public class JarFile extends AbstractJarFile {
 
 	private static final String MANIFEST_NAME = "META-INF/MANIFEST.MF";
 
@@ -126,9 +122,7 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 	private JarFile(RandomAccessDataFile rootFile, String pathFromRoot, RandomAccessData data, JarEntryFilter filter,
 			JarFileType type, Supplier<Manifest> manifestSupplier) throws IOException {
 		super(rootFile.getFile());
-		if (System.getSecurityManager() == null) {
-			super.close();
-		}
+		super.close();
 		this.rootFile = rootFile;
 		this.pathFromRoot = pathFromRoot;
 		CentralDirectoryParser parser = new CentralDirectoryParser();
@@ -139,12 +133,7 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 			this.data = parser.parse(data, filter == null);
 		}
 		catch (RuntimeException ex) {
-			try {
-				this.rootFile.close();
-				super.close();
-			}
-			catch (IOException ioex) {
-			}
+			close();
 			throw ex;
 		}
 		this.manifestSupplier = (manifestSupplier != null) ? manifestSupplier : () -> {
@@ -216,24 +205,6 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 		return new JarEntryEnumeration(this.entries.iterator());
 	}
 
-	@Override
-	public Stream<java.util.jar.JarEntry> stream() {
-		Spliterator<java.util.jar.JarEntry> spliterator = Spliterators.spliterator(iterator(), size(),
-				Spliterator.ORDERED | Spliterator.DISTINCT | Spliterator.IMMUTABLE | Spliterator.NONNULL);
-		return StreamSupport.stream(spliterator, false);
-	}
-
-	/**
-	 * Return an iterator for the contained entries.
-	 * @see java.lang.Iterable#iterator()
-	 * @since 2.3.0
-	 */
-	@Override
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public Iterator<java.util.jar.JarEntry> iterator() {
-		return (Iterator) this.entries.iterator(this::ensureOpen);
-	}
-
 	public JarEntry getJarEntry(CharSequence name) {
 		return this.entries.getEntry(name);
 	}
@@ -249,7 +220,6 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 
 	@Override
 	public ZipEntry getEntry(String name) {
-		ensureOpen();
 		return this.entries.getEntry(name);
 	}
 
@@ -260,7 +230,6 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 
 	@Override
 	public synchronized InputStream getInputStream(ZipEntry entry) throws IOException {
-		ensureOpen();
 		if (entry instanceof JarEntry) {
 			return this.entries.getInputStream((JarEntry) entry);
 		}
@@ -329,13 +298,11 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 
 	@Override
 	public String getComment() {
-		ensureOpen();
 		return this.comment;
 	}
 
 	@Override
 	public int size() {
-		ensureOpen();
 		return this.entries.getSize();
 	}
 
@@ -344,16 +311,9 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 		if (this.closed) {
 			return;
 		}
-		super.close();
+		this.closed = true;
 		if (this.type == JarFileType.DIRECT) {
 			this.rootFile.close();
-		}
-		this.closed = true;
-	}
-
-	private void ensureOpen() {
-		if (this.closed) {
-			throw new IllegalStateException("zip file closed");
 		}
 	}
 
@@ -419,10 +379,9 @@ public class JarFile extends AbstractJarFile implements Iterable<java.util.jar.J
 	 * {@link URLStreamHandler} will be located to deal with jar URLs.
 	 */
 	public static void registerUrlProtocolHandler() {
-		Handler.captureJarContextUrl();
 		String handlers = System.getProperty(PROTOCOL_HANDLER, "");
 		System.setProperty(PROTOCOL_HANDLER,
-				((handlers == null || handlers.isEmpty()) ? HANDLERS_PACKAGE : handlers + "|" + HANDLERS_PACKAGE));
+				("".equals(handlers) ? HANDLERS_PACKAGE : handlers + "|" + HANDLERS_PACKAGE));
 		resetCachedUrlHandlers();
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,18 @@ package org.springframework.boot.actuate.endpoint.web.servlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.accept.PathExtensionContentNegotiationStrategy;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
 /**
- * {@link HandlerInterceptor} to ensure that
- * {@link org.springframework.web.accept.PathExtensionContentNegotiationStrategy} is
- * skipped for web endpoints.
+ * {@link HandlerInterceptorAdapter} to ensure that
+ * {@link PathExtensionContentNegotiationStrategy} is skipped for web endpoints.
  *
  * @author Phillip Webb
  */
-final class SkipPathExtensionContentNegotiation implements HandlerInterceptor {
+final class SkipPathExtensionContentNegotiation extends HandlerInterceptorAdapter {
 
-	@SuppressWarnings("deprecation")
-	private static final String SKIP_ATTRIBUTE = org.springframework.web.accept.PathExtensionContentNegotiationStrategy.class
-			.getName() + ".SKIP";
+	private static final String SKIP_ATTRIBUTE = PathExtensionContentNegotiationStrategy.class.getName() + ".SKIP";
 
 	@Override
 	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.boot.autoconfigure.AutoConfigurationPackages.Registrar;
 import org.springframework.boot.autoconfigure.packagestest.one.FirstConfiguration;
 import org.springframework.boot.autoconfigure.packagestest.two.SecondConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -39,8 +41,7 @@ public class AutoConfigurationPackagesTests {
 
 	@Test
 	void setAndGet() {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
-				ConfigWithAutoConfigurationPackage.class);
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConfigWithRegistrar.class);
 		assertThat(AutoConfigurationPackages.get(context.getBeanFactory()))
 				.containsExactly(getClass().getPackage().getName());
 	}
@@ -62,43 +63,21 @@ public class AutoConfigurationPackagesTests {
 		assertThat(packages).containsOnly(package1.getName(), package2.getName());
 	}
 
-	@Test
-	void whenBasePackagesAreSpecifiedThenTheyAreRegistered() {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
-				ConfigWithAutoConfigurationBasePackages.class);
-		List<String> packages = AutoConfigurationPackages.get(context.getBeanFactory());
-		assertThat(packages).containsExactly("com.example.alpha", "com.example.bravo");
-	}
-
-	@Test
-	void whenBasePackageClassesAreSpecifiedThenTheirPackagesAreRegistered() {
-		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
-				ConfigWithAutoConfigurationBasePackageClasses.class);
-		List<String> packages = AutoConfigurationPackages.get(context.getBeanFactory());
-		assertThat(packages).containsOnly(FirstConfiguration.class.getPackage().getName(),
-				SecondConfiguration.class.getPackage().getName());
-	}
-
 	@Configuration(proxyBeanMethods = false)
-	@AutoConfigurationPackage
-	static class ConfigWithAutoConfigurationPackage {
-
-	}
-
-	@Configuration(proxyBeanMethods = false)
-	@AutoConfigurationPackage(basePackages = { "com.example.alpha", "com.example.bravo" })
-	static class ConfigWithAutoConfigurationBasePackages {
-
-	}
-
-	@Configuration(proxyBeanMethods = false)
-	@AutoConfigurationPackage(basePackageClasses = { FirstConfiguration.class, SecondConfiguration.class })
-	static class ConfigWithAutoConfigurationBasePackageClasses {
+	@Import(AutoConfigurationPackages.Registrar.class)
+	static class ConfigWithRegistrar {
 
 	}
 
 	@Configuration(proxyBeanMethods = false)
 	static class EmptyConfig {
+
+	}
+
+	/**
+	 * Test helper to allow {@link Registrar} to be referenced from other packages.
+	 */
+	public static class TestRegistrar extends Registrar {
 
 	}
 

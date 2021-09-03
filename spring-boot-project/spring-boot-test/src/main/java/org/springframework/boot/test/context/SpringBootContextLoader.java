@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.BeanUtils;
-import org.springframework.boot.ApplicationContextFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.mock.web.SpringBootMockServletContext;
 import org.springframework.boot.test.util.TestPropertyValues;
@@ -96,7 +99,7 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 			setActiveProfiles(environment, config.getActiveProfiles());
 		}
 		ResourceLoader resourceLoader = (application.getResourceLoader() != null) ? application.getResourceLoader()
-				: new DefaultResourceLoader(null);
+				: new DefaultResourceLoader(getClass().getClassLoader());
 		TestPropertySourceUtils.addPropertiesFilesToEnvironment(environment, resourceLoader,
 				config.getPropertySourceLocations());
 		TestPropertySourceUtils.addInlinedPropertiesToEnvironment(environment, getInlinedProperties(config));
@@ -111,16 +114,14 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		else if (config instanceof ReactiveWebMergedContextConfiguration) {
 			application.setWebApplicationType(WebApplicationType.REACTIVE);
 			if (!isEmbeddedWebEnvironment(config)) {
-				application.setApplicationContextFactory(
-						ApplicationContextFactory.of(GenericReactiveWebApplicationContext::new));
+				new ReactiveWebConfigurer().configure(application);
 			}
 		}
 		else {
 			application.setWebApplicationType(WebApplicationType.NONE);
 		}
 		application.setInitializers(initializers);
-		String[] args = SpringBootTestArgs.get(config.getContextCustomizers());
-		return application.run(args);
+		return application.run(getArgs(config));
 	}
 
 	/**
@@ -141,14 +142,22 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		return new StandardEnvironment();
 	}
 
+	/**
+	 * Return the application arguments to use. If no arguments are available, return an
+	 * empty array.
+	 * @param config the source context configuration
+	 * @return the application arguments to use
+	 * @deprecated since 2.2.7
+	 * @see SpringApplication#run(String...)
+	 */
+	@Deprecated
+	protected String[] getArgs(MergedContextConfiguration config) {
+		return SpringBootTestArgs.get(config.getContextCustomizers());
+	}
+
 	private void setActiveProfiles(ConfigurableEnvironment environment, String[] profiles) {
-		environment.setActiveProfiles(profiles);
-		// Also add as properties to override any application.properties
-		String[] pairs = new String[profiles.length];
-		for (int i = 0; i < profiles.length; i++) {
-			pairs[i] = "spring.profiles.active[" + i + "]=" + profiles[i];
-		}
-		TestPropertyValues.of(pairs).applyTo(environment);
+		TestPropertyValues.of("spring.profiles.active=" + StringUtils.arrayToCommaDelimitedString(profiles))
+				.applyTo(environment);
 	}
 
 	protected String[] getInlinedProperties(MergedContextConfiguration config) {
@@ -156,11 +165,24 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		// JMX bean names will clash if the same bean is used in multiple contexts
 		disableJmx(properties);
 		properties.addAll(Arrays.asList(config.getPropertySourceProperties()));
+		if (!isEmbeddedWebEnvironment(config) && !hasCustomServerPort(properties)) {
+			properties.add("server.port=-1");
+		}
 		return StringUtils.toStringArray(properties);
 	}
 
 	private void disableJmx(List<String> properties) {
 		properties.add("spring.jmx.enabled=false");
+	}
+
+	private boolean hasCustomServerPort(List<String> properties) {
+		Binder binder = new Binder(convertToConfigurationPropertySource(properties));
+		return binder.bind("server.port", Bindable.of(String.class)).isBound();
+	}
+
+	private ConfigurationPropertySource convertToConfigurationPropertySource(List<String> properties) {
+		return new MapConfigurationPropertySource(
+				TestPropertySourceUtils.convertInlinedPropertiesToMap(StringUtils.toStringArray(properties)));
 	}
 
 	/**
@@ -240,11 +262,13 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 	 */
 	private static class WebConfigurer {
 
+		private static final Class<GenericWebApplicationContext> WEB_CONTEXT_CLASS = GenericWebApplicationContext.class;
+
 		void configure(MergedContextConfiguration configuration, SpringApplication application,
 				List<ApplicationContextInitializer<?>> initializers) {
 			WebMergedContextConfiguration webConfiguration = (WebMergedContextConfiguration) configuration;
 			addMockServletContext(initializers, webConfiguration);
-			application.setApplicationContextFactory((webApplicationType) -> new GenericWebApplicationContext());
+			application.setApplicationContextClass(WEB_CONTEXT_CLASS);
 		}
 
 		private void addMockServletContext(List<ApplicationContextInitializer<?>> initializers,
@@ -252,6 +276,19 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 			SpringBootMockServletContext servletContext = new SpringBootMockServletContext(
 					webConfiguration.getResourceBasePath());
 			initializers.add(0, new ServletContextApplicationContextInitializer(servletContext, true));
+		}
+
+	}
+
+	/**
+	 * Inner class to configure {@link ReactiveWebMergedContextConfiguration}.
+	 */
+	private static class ReactiveWebConfigurer {
+
+		private static final Class<GenericReactiveWebApplicationContext> WEB_CONTEXT_CLASS = GenericReactiveWebApplicationContext.class;
+
+		void configure(SpringApplication application) {
+			application.setApplicationContextClass(WEB_CONTEXT_CLASS);
 		}
 
 	}

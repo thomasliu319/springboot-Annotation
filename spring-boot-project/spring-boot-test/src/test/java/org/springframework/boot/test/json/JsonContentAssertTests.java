@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,7 +116,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isEqualToWhenFileIsNotMatchingShouldFail() {
+	void isEqualToWhenFileIsNotMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isEqualTo(createFile(DIFFERENT)));
 	}
@@ -199,7 +199,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isEqualToJsonWhenFileIsNotMatchingShouldFail() {
+	void isEqualToJsonWhenFileIsNotMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isEqualToJson(createFile(DIFFERENT)));
 	}
@@ -276,7 +276,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isStrictlyEqualToJsonWhenFileIsNotMatchingShouldFail() {
+	void isStrictlyEqualToJsonWhenFileIsNotMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isStrictlyEqualToJson(createFile(LENIENT_SAME)));
 	}
@@ -430,7 +430,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isEqualToJsonWhenFileIsNotMatchingAndComparatorShouldFail() {
+	void isEqualToJsonWhenFileIsNotMatchingAndComparatorShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isEqualToJson(createFile(DIFFERENT), COMPARATOR));
 	}
@@ -496,7 +496,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isNotEqualToWhenFileIsMatchingShouldFail() {
+	void isNotEqualToWhenFileIsMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isNotEqualTo(createFile(LENIENT_SAME)));
 	}
@@ -578,7 +578,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isNotEqualToJsonWhenFileIsMatchingShouldFail() {
+	void isNotEqualToJsonWhenFileIsMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isNotEqualToJson(createFile(LENIENT_SAME)));
 	}
@@ -655,7 +655,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isNotStrictlyEqualToJsonWhenFileIsMatchingShouldFail() {
+	void isNotStrictlyEqualToJsonWhenFileIsMatchingShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isNotStrictlyEqualToJson(createFile(SOURCE)));
 	}
@@ -732,7 +732,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isNotEqualToJsonWhenFileIsMatchingAndLenientShouldFail() {
+	void isNotEqualToJsonWhenFileIsMatchingAndLenientShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class).isThrownBy(
 				() -> assertThat(forJson(SOURCE)).isNotEqualToJson(createFile(LENIENT_SAME), JSONCompareMode.LENIENT));
 	}
@@ -809,7 +809,7 @@ class JsonContentAssertTests {
 	}
 
 	@Test
-	void isNotEqualToJsonWhenFileIsMatchingAndComparatorShouldFail() {
+	void isNotEqualToJsonWhenFileIsMatchingAndComparatorShouldFail() throws Exception {
 		assertThatExceptionOfType(AssertionError.class)
 				.isThrownBy(() -> assertThat(forJson(SOURCE)).isNotEqualToJson(createFile(LENIENT_SAME), COMPARATOR));
 	}

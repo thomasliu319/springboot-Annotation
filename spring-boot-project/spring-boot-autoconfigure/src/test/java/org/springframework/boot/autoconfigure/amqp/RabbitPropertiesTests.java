@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.amqp.rabbit.config.DirectRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.listener.DirectMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 
@@ -60,8 +61,8 @@ class RabbitPropertiesTests {
 	}
 
 	@Test
-	void portDefaultsToNull() {
-		assertThat(this.properties.getPort()).isNull();
+	void portDefaultsTo5672() {
+		assertThat(this.properties.getPort()).isEqualTo(5672);
 	}
 
 	@Test
@@ -74,17 +75,6 @@ class RabbitPropertiesTests {
 	void determinePortReturnsPortOfFirstAddress() {
 		this.properties.setAddresses("rabbit1.example.com:1234,rabbit2.example.com:2345");
 		assertThat(this.properties.determinePort()).isEqualTo(1234);
-	}
-
-	@Test
-	void determinePortReturnsDefaultPortWhenNoAddresses() {
-		assertThat(this.properties.determinePort()).isEqualTo(5672);
-	}
-
-	@Test
-	void determinePortWithSslReturnsDefaultSslPortWhenNoAddresses() {
-		this.properties.getSsl().setEnabled(true);
-		assertThat(this.properties.determinePort()).isEqualTo(5671);
 	}
 
 	@Test
@@ -247,17 +237,6 @@ class RabbitPropertiesTests {
 	}
 
 	@Test
-	void determineAddressesUsesDefaultWhenNoAddressesSet() {
-		assertThat(this.properties.determineAddresses()).isEqualTo("localhost:5672");
-	}
-
-	@Test
-	void determineAddressesWithSslUsesDefaultWhenNoAddressesSet() {
-		this.properties.getSsl().setEnabled(true);
-		assertThat(this.properties.determineAddresses()).isEqualTo("localhost:5671");
-	}
-
-	@Test
 	void determineAddressesUsesHostAndPortPropertiesWhenNoAddressesSet() {
 		this.properties.setHost("rabbit.example.com");
 		this.properties.setPort(1234);
@@ -303,8 +282,6 @@ class RabbitPropertiesTests {
 		RabbitProperties.SimpleContainer simple = this.properties.getListener().getSimple();
 		assertThat(simple.isAutoStartup()).isEqualTo(container.isAutoStartup());
 		assertThat(container).hasFieldOrPropertyWithValue("missingQueuesFatal", simple.isMissingQueuesFatal());
-		assertThat(container).hasFieldOrPropertyWithValue("deBatchingEnabled", simple.isDeBatchingEnabled());
-		assertThat(container).hasFieldOrPropertyWithValue("consumerBatchEnabled", simple.isConsumerBatchEnabled());
 	}
 
 	@Test
@@ -314,7 +291,26 @@ class RabbitPropertiesTests {
 		RabbitProperties.DirectContainer direct = this.properties.getListener().getDirect();
 		assertThat(direct.isAutoStartup()).isEqualTo(container.isAutoStartup());
 		assertThat(container).hasFieldOrPropertyWithValue("missingQueuesFatal", direct.isMissingQueuesFatal());
-		assertThat(container).hasFieldOrPropertyWithValue("deBatchingEnabled", direct.isDeBatchingEnabled());
+	}
+
+	@Test
+	@Deprecated
+	void isPublisherConfirmsShouldDefaultToFalse() {
+		assertThat(this.properties.isPublisherConfirms()).isEqualTo(false);
+	}
+
+	@Test
+	@Deprecated
+	void isPublisherConfirmsWhenPublisherConfirmsTypeSimpleShouldBeFalse() {
+		this.properties.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.SIMPLE);
+		assertThat(this.properties.isPublisherConfirms()).isEqualTo(false);
+	}
+
+	@Test
+	@Deprecated
+	void isPublisherConfirmsWhenPublisherConfirmsTypeCorrelatedShouldBeTrue() {
+		this.properties.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED);
+		assertThat(this.properties.isPublisherConfirms()).isEqualTo(true);
 	}
 
 }

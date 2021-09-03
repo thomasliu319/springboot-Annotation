@@ -48,9 +48,6 @@ import org.springframework.boot.loader.data.RandomAccessData;
  */
 class JarFileEntries implements CentralDirectoryVisitor, Iterable<JarEntry> {
 
-	private static final Runnable NO_VALIDATION = () -> {
-	};
-
 	private static final String META_INF_PREFIX = "META-INF/";
 
 	private static final Name MULTI_RELEASE = new Name("Multi-Release");
@@ -195,11 +192,7 @@ class JarFileEntries implements CentralDirectoryVisitor, Iterable<JarEntry> {
 
 	@Override
 	public Iterator<JarEntry> iterator() {
-		return new EntryIterator(NO_VALIDATION);
-	}
-
-	Iterator<JarEntry> iterator(Runnable validator) {
-		return new EntryIterator(validator);
+		return new EntryIterator();
 	}
 
 	boolean containsEntry(CharSequence name) {
@@ -390,26 +383,17 @@ class JarFileEntries implements CentralDirectoryVisitor, Iterable<JarEntry> {
 	/**
 	 * Iterator for contained entries.
 	 */
-	private final class EntryIterator implements Iterator<JarEntry> {
-
-		private final Runnable validator;
+	private class EntryIterator implements Iterator<JarEntry> {
 
 		private int index = 0;
 
-		private EntryIterator(Runnable validator) {
-			this.validator = validator;
-			validator.run();
-		}
-
 		@Override
 		public boolean hasNext() {
-			this.validator.run();
 			return this.index < JarFileEntries.this.size;
 		}
 
 		@Override
 		public JarEntry next() {
-			this.validator.run();
 			if (!hasNext()) {
 				throw new NoSuchElementException();
 			}

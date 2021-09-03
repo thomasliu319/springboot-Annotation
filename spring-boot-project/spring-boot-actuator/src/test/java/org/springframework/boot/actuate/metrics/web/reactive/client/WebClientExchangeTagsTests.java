@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,14 +79,6 @@ class WebClientExchangeTagsTests {
 	}
 
 	@Test
-	void uriWhenTemplateIsMissingShouldReturnPathWithQueryParams() {
-		this.request = ClientRequest
-				.create(HttpMethod.GET, URI.create("https://example.org/projects/spring-boot?section=docs")).build();
-		assertThat(WebClientExchangeTags.uri(this.request))
-				.isEqualTo(Tag.of("uri", "/projects/spring-boot?section=docs"));
-	}
-
-	@Test
 	void clientName() {
 		assertThat(WebClientExchangeTags.clientName(this.request)).isEqualTo(Tag.of("clientName", "example.org"));
 	}
@@ -94,29 +86,24 @@ class WebClientExchangeTagsTests {
 	@Test
 	void status() {
 		given(this.response.rawStatusCode()).willReturn(HttpStatus.OK.value());
-		assertThat(WebClientExchangeTags.status(this.response, null)).isEqualTo(Tag.of("status", "200"));
+		assertThat(WebClientExchangeTags.status(this.response)).isEqualTo(Tag.of("status", "200"));
 	}
 
 	@Test
 	void statusWhenIOException() {
-		assertThat(WebClientExchangeTags.status(null, new IOException())).isEqualTo(Tag.of("status", "IO_ERROR"));
+		assertThat(WebClientExchangeTags.status(new IOException())).isEqualTo(Tag.of("status", "IO_ERROR"));
 	}
 
 	@Test
 	void statusWhenClientException() {
-		assertThat(WebClientExchangeTags.status(null, new IllegalArgumentException()))
+		assertThat(WebClientExchangeTags.status(new IllegalArgumentException()))
 				.isEqualTo(Tag.of("status", "CLIENT_ERROR"));
 	}
 
 	@Test
 	void statusWhenNonStandard() {
 		given(this.response.rawStatusCode()).willReturn(490);
-		assertThat(WebClientExchangeTags.status(this.response, null)).isEqualTo(Tag.of("status", "490"));
-	}
-
-	@Test
-	void statusWhenCancelled() {
-		assertThat(WebClientExchangeTags.status(null, null)).isEqualTo(Tag.of("status", "CLIENT_ERROR"));
+		assertThat(WebClientExchangeTags.status(this.response)).isEqualTo(Tag.of("status", "490"));
 	}
 
 	@Test

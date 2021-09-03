@@ -60,7 +60,7 @@ public class TestAutoConfigureAnnotationProcessor extends AutoConfigureAnnotatio
 	}
 
 	public Properties getWrittenProperties() throws IOException {
-		File file = getWrittenFile();
+		File file = new File(this.outputLocation, PROPERTIES_PATH);
 		if (!file.exists()) {
 			return null;
 		}
@@ -69,10 +69,6 @@ public class TestAutoConfigureAnnotationProcessor extends AutoConfigureAnnotatio
 			properties.load(inputStream);
 			return properties;
 		}
-	}
-
-	public File getWrittenFile() {
-		return new File(this.outputLocation, PROPERTIES_PATH);
 	}
 
 }

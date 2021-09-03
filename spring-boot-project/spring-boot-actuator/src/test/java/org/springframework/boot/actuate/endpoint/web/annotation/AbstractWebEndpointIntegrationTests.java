@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,11 +61,10 @@ import static org.mockito.Mockito.verify;
  *
  * @param <T> the type of application context used by the tests
  * @author Andy Wilkinson
- * @author Scott Frederick
  */
 public abstract class AbstractWebEndpointIntegrationTests<T extends ConfigurableApplicationContext & AnnotationConfigRegistry> {
 
-	private static final Duration TIMEOUT = Duration.ofMinutes(5);
+	private static final Duration TIMEOUT = Duration.ofMinutes(6);
 
 	private static final String ACTUATOR_MEDIA_TYPE_PATTERN = "application/vnd.test\\+json(;charset=UTF-8)?";
 
@@ -137,7 +136,7 @@ public abstract class AbstractWebEndpointIntegrationTests<T extends Configurable
 	@Test
 	void matchAllRemainingPathsSelectorShouldDecodePath() {
 		load(MatchAllRemainingEndpointConfiguration.class,
-				(client) -> client.get().uri("/matchallremaining/one/two three/").exchange().expectStatus().isOk()
+				(client) -> client.get().uri("/matchallremaining/one/two%20three/").exchange().expectStatus().isOk()
 						.expectBody().jsonPath("selection").isEqualTo("one|two three"));
 	}
 
@@ -416,10 +415,8 @@ public abstract class AbstractWebEndpointIntegrationTests<T extends Configurable
 			BiConsumer<ApplicationContext, WebTestClient> consumer) {
 		T applicationContext = this.applicationContextSupplier.get();
 		contextCustomizer.accept(applicationContext);
-		Map<String, Object> properties = new HashMap<>();
-		properties.put("endpointPath", endpointPath);
-		properties.put("server.error.include-message", "always");
-		applicationContext.getEnvironment().getPropertySources().addLast(new MapPropertySource("test", properties));
+		applicationContext.getEnvironment().getPropertySources()
+				.addLast(new MapPropertySource("test", Collections.singletonMap("endpointPath", endpointPath)));
 		applicationContext.refresh();
 		try {
 			InetSocketAddress address = new InetSocketAddress(getPort(applicationContext));

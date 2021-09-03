@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.boot.web.server.Ssl;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -48,11 +49,7 @@ public class ManagementServerProperties {
 	 */
 	private InetAddress address;
 
-	/**
-	 * Management endpoint base path (for instance, `/management`). Requires a custom
-	 * management.server.port.
-	 */
-	private String basePath = "";
+	private final Servlet servlet = new Servlet();
 
 	@NestedConfigurationProperty
 	private Ssl ssl;
@@ -85,14 +82,6 @@ public class ManagementServerProperties {
 		this.address = address;
 	}
 
-	public String getBasePath() {
-		return this.basePath;
-	}
-
-	public void setBasePath(String basePath) {
-		this.basePath = cleanBasePath(basePath);
-	}
-
 	public Ssl getSsl() {
 		return this.ssl;
 	}
@@ -101,17 +90,42 @@ public class ManagementServerProperties {
 		this.ssl = ssl;
 	}
 
-	private String cleanBasePath(String basePath) {
-		String candidate = StringUtils.trimWhitespace(basePath);
-		if (StringUtils.hasText(candidate)) {
-			if (!candidate.startsWith("/")) {
-				candidate = "/" + candidate;
-			}
-			if (candidate.endsWith("/")) {
-				candidate = candidate.substring(0, candidate.length() - 1);
-			}
+	public Servlet getServlet() {
+		return this.servlet;
+	}
+
+	/**
+	 * Servlet properties.
+	 */
+	public static class Servlet {
+
+		/**
+		 * Management endpoint context-path (for instance, `/management`). Requires a
+		 * custom management.server.port.
+		 */
+		private String contextPath = "";
+
+		/**
+		 * Return the context path with no trailing slash (i.e. the '/' root context is
+		 * represented as the empty string).
+		 * @return the context path (no trailing slash)
+		 */
+		public String getContextPath() {
+			return this.contextPath;
 		}
-		return candidate;
+
+		public void setContextPath(String contextPath) {
+			Assert.notNull(contextPath, "ContextPath must not be null");
+			this.contextPath = cleanContextPath(contextPath);
+		}
+
+		private String cleanContextPath(String contextPath) {
+			if (StringUtils.hasText(contextPath) && contextPath.endsWith("/")) {
+				return contextPath.substring(0, contextPath.length() - 1);
+			}
+			return contextPath;
+		}
+
 	}
 
 }

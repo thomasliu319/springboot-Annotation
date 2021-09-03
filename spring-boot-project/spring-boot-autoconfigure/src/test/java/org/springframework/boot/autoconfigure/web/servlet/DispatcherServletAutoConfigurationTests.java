@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.util.unit.DataSize;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.multipart.MultipartResolver;
 import org.springframework.web.servlet.DispatcherServlet;
@@ -45,7 +46,7 @@ import static org.mockito.Mockito.mock;
  */
 class DispatcherServletAutoConfigurationTests {
 
-	private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
+	private WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(DispatcherServletAutoConfiguration.class));
 
 	@Test
@@ -82,12 +83,13 @@ class DispatcherServletAutoConfigurationTests {
 
 	@Test
 	void registrationOverrideWithAutowiredServlet() {
-		this.contextRunner.withUserConfiguration(CustomAutowiredRegistration.class).run((context) -> {
-			ServletRegistrationBean<?> registration = context.getBean(ServletRegistrationBean.class);
-			assertThat(registration.getUrlMappings()).containsExactly("/foo");
-			assertThat(registration.getServletName()).isEqualTo("customDispatcher");
-			assertThat(context).hasSingleBean(DispatcherServlet.class);
-		});
+		this.contextRunner.withUserConfiguration(CustomAutowiredRegistration.class, CustomDispatcherServletPath.class)
+				.run((context) -> {
+					ServletRegistrationBean<?> registration = context.getBean(ServletRegistrationBean.class);
+					assertThat(registration.getUrlMappings()).containsExactly("/foo");
+					assertThat(registration.getServletName()).isEqualTo("customDispatcher");
+					assertThat(context).hasSingleBean(DispatcherServlet.class);
+				});
 	}
 
 	@Test
@@ -272,7 +274,7 @@ class DispatcherServletAutoConfigurationTests {
 		}
 
 		@Override
-		public MultipartHttpServletRequest resolveMultipart(HttpServletRequest request) {
+		public MultipartHttpServletRequest resolveMultipart(HttpServletRequest request) throws MultipartException {
 			return null;
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@
 package org.springframework.boot.actuate.endpoint.invoke.reflect;
 
 import java.lang.reflect.Method;
+import java.security.Principal;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.boot.actuate.endpoint.InvocationContext;
+import org.springframework.boot.actuate.endpoint.SecurityContext;
+import org.springframework.boot.actuate.endpoint.http.ApiVersion;
 import org.springframework.boot.actuate.endpoint.invoke.MissingParametersException;
 import org.springframework.boot.actuate.endpoint.invoke.OperationInvoker;
 import org.springframework.boot.actuate.endpoint.invoke.OperationParameter;
@@ -86,7 +89,13 @@ public class ReflectiveOperationInvoker implements OperationInvoker {
 		if (!parameter.isMandatory()) {
 			return false;
 		}
-		if (context.canResolve(parameter.getType())) {
+		if (ApiVersion.class.equals(parameter.getType())) {
+			return false;
+		}
+		if (Principal.class.equals(parameter.getType())) {
+			return context.getSecurityContext().getPrincipal() == null;
+		}
+		if (SecurityContext.class.equals(parameter.getType())) {
 			return false;
 		}
 		return context.getArguments().get(parameter.getName()) == null;
@@ -98,9 +107,14 @@ public class ReflectiveOperationInvoker implements OperationInvoker {
 	}
 
 	private Object resolveArgument(OperationParameter parameter, InvocationContext context) {
-		Object resolvedByType = context.resolveArgument(parameter.getType());
-		if (resolvedByType != null) {
-			return resolvedByType;
+		if (ApiVersion.class.equals(parameter.getType())) {
+			return context.getApiVersion();
+		}
+		if (Principal.class.equals(parameter.getType())) {
+			return context.getSecurityContext().getPrincipal();
+		}
+		if (SecurityContext.class.equals(parameter.getType())) {
+			return context.getSecurityContext();
 		}
 		Object value = context.getArguments().get(parameter.getName());
 		return this.parameterValueMapper.mapParameterValue(parameter, value);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ class FilteredClassLoaderTests {
 		try (FilteredClassLoader classLoader = new FilteredClassLoader(
 				FilteredClassLoaderTests.class.getPackage().getName())) {
 			assertThatExceptionOfType(ClassNotFoundException.class)
-					.isThrownBy(() -> Class.forName(getClass().getName(), false, classLoader));
+					.isThrownBy(() -> classLoader.loadClass(getClass().getName()));
 		}
 	}
 
@@ -51,14 +51,14 @@ class FilteredClassLoaderTests {
 	void loadClassWhenFilteredOnClassShouldThrowClassNotFound() throws Exception {
 		try (FilteredClassLoader classLoader = new FilteredClassLoader(FilteredClassLoaderTests.class)) {
 			assertThatExceptionOfType(ClassNotFoundException.class)
-					.isThrownBy(() -> Class.forName(getClass().getName(), false, classLoader));
+					.isThrownBy(() -> classLoader.loadClass(getClass().getName()));
 		}
 	}
 
 	@Test
 	void loadClassWhenNotFilteredShouldLoadClass() throws Exception {
 		FilteredClassLoader classLoader = new FilteredClassLoader((className) -> false);
-		Class<?> loaded = Class.forName(getClass().getName(), false, classLoader);
+		Class<?> loaded = classLoader.loadClass(getClass().getName());
 		assertThat(loaded.getName()).isEqualTo(getClass().getName());
 		classLoader.close();
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,12 @@
 
 package org.springframework.boot.actuate.autoconfigure.jdbc;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.actuate.autoconfigure.health.HealthContributorAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.jdbc.DataSourceHealthContributorAutoConfiguration.RoutingDataSourceHealthContributor;
+import org.springframework.boot.actuate.autoconfigure.jdbc.DataSourceHealthContributorAutoConfiguration.RoutingDataSourceHealthIndicator;
 import org.springframework.boot.actuate.health.CompositeHealthContributor;
 import org.springframework.boot.actuate.health.NamedContributor;
 import org.springframework.boot.actuate.jdbc.DataSourceHealthIndicator;
@@ -41,20 +38,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@link DataSourceHealthContributorAutoConfiguration}.
  *
  * @author Phillip Webb
- * @author Julio Gomez
  */
 class DataSourceHealthContributorAutoConfigurationTests {
 
-	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+	private ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(DataSourceAutoConfiguration.class,
-					HealthContributorAutoConfiguration.class, DataSourceHealthContributorAutoConfiguration.class));
+					HealthContributorAutoConfiguration.class, DataSourceHealthContributorAutoConfiguration.class))
+			.withPropertyValues("spring.datasource.initialization-mode=never");
 
 	@Test
 	void runShouldCreateIndicator() {
@@ -77,44 +73,19 @@ class DataSourceHealthContributorAutoConfigurationTests {
 
 	@Test
 	void runWithRoutingAndEmbeddedDataSourceShouldIncludeRoutingDataSource() {
-		this.contextRunner.withUserConfiguration(EmbeddedDataSourceConfiguration.class, RoutingDataSourceConfig.class)
+		this.contextRunner.withUserConfiguration(EmbeddedDataSourceConfiguration.class, RoutingDatasourceConfig.class)
 				.run((context) -> {
 					CompositeHealthContributor composite = context.getBean(CompositeHealthContributor.class);
 					assertThat(composite.getContributor("dataSource")).isInstanceOf(DataSourceHealthIndicator.class);
 					assertThat(composite.getContributor("routingDataSource"))
-							.isInstanceOf(RoutingDataSourceHealthContributor.class);
+							.isInstanceOf(RoutingDataSourceHealthIndicator.class);
 				});
 	}
 
 	@Test
-	void runWithRoutingAndEmbeddedDataSourceShouldNotIncludeRoutingDataSourceWhenIgnored() {
-		this.contextRunner.withUserConfiguration(EmbeddedDataSourceConfiguration.class, RoutingDataSourceConfig.class)
-				.withPropertyValues("management.health.db.ignore-routing-datasources:true").run((context) -> {
-					assertThat(context).doesNotHaveBean(CompositeHealthContributor.class);
-					assertThat(context).hasSingleBean(DataSourceHealthIndicator.class);
-					assertThat(context).doesNotHaveBean(RoutingDataSourceHealthContributor.class);
-				});
-	}
-
-	@Test
-	void runWithOnlyRoutingDataSourceShouldIncludeRoutingDataSourceWithComposedIndicators() {
-		this.contextRunner.withUserConfiguration(RoutingDataSourceConfig.class).run((context) -> {
-			assertThat(context).hasSingleBean(RoutingDataSourceHealthContributor.class);
-			RoutingDataSourceHealthContributor routingHealthContributor = context
-					.getBean(RoutingDataSourceHealthContributor.class);
-			assertThat(routingHealthContributor.getContributor("one")).isInstanceOf(DataSourceHealthIndicator.class);
-			assertThat(routingHealthContributor.getContributor("two")).isInstanceOf(DataSourceHealthIndicator.class);
-			assertThat(routingHealthContributor.iterator()).toIterable().extracting("name")
-					.containsExactlyInAnyOrder("one", "two");
-		});
-	}
-
-	@Test
-	void runWithOnlyRoutingDataSourceShouldCrashWhenIgnored() {
-		this.contextRunner.withUserConfiguration(RoutingDataSourceConfig.class)
-				.withPropertyValues("management.health.db.ignore-routing-datasources:true")
-				.run((context) -> assertThat(context).hasFailed().getFailure()
-						.hasRootCauseInstanceOf(IllegalArgumentException.class));
+	void runWithOnlyRoutingDataSourceShouldIncludeRoutingDataSource() {
+		this.contextRunner.withUserConfiguration(RoutingDatasourceConfig.class)
+				.run((context) -> assertThat(context).hasSingleBean(RoutingDataSourceHealthIndicator.class));
 	}
 
 	@Test
@@ -150,16 +121,11 @@ class DataSourceHealthContributorAutoConfigurationTests {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	static class RoutingDataSourceConfig {
+	static class RoutingDatasourceConfig {
 
 		@Bean
 		AbstractRoutingDataSource routingDataSource() {
-			Map<Object, DataSource> dataSources = new HashMap<>();
-			dataSources.put("one", mock(DataSource.class));
-			dataSources.put("two", mock(DataSource.class));
-			AbstractRoutingDataSource routingDataSource = mock(AbstractRoutingDataSource.class);
-			given(routingDataSource.getResolvedDataSources()).willReturn(dataSources);
-			return routingDataSource;
+			return mock(AbstractRoutingDataSource.class);
 		}
 
 	}

@@ -80,6 +80,8 @@ public class UndertowWebServerFactoryCustomizer
 		ServerProperties properties = this.serverProperties;
 		map.from(properties::getMaxHttpHeaderSize).asInt(DataSize::toBytes).when(this::isPositive)
 				.to(options.option(UndertowOptions.MAX_HEADER_SIZE));
+		map.from(properties::getConnectionTimeout).asInt(Duration::toMillis)
+				.to(options.option(UndertowOptions.NO_REQUEST_TIMEOUT));
 		mapUndertowProperties(factory, options);
 		mapAccessLogProperties(factory);
 		map.from(this::getOrDeduceUseForwardHeaders).to(factory::setUseForwardHeaders);
@@ -89,9 +91,8 @@ public class UndertowWebServerFactoryCustomizer
 		PropertyMapper map = PropertyMapper.get().alwaysApplyingWhenNonNull();
 		Undertow properties = this.serverProperties.getUndertow();
 		map.from(properties::getBufferSize).whenNonNull().asInt(DataSize::toBytes).to(factory::setBufferSize);
-		ServerProperties.Undertow.Threads threadProperties = properties.getThreads();
-		map.from(threadProperties::getIo).to(factory::setIoThreads);
-		map.from(threadProperties::getWorker).to(factory::setWorkerThreads);
+		map.from(properties::getIoThreads).to(factory::setIoThreads);
+		map.from(properties::getWorkerThreads).to(factory::setWorkerThreads);
 		map.from(properties::getDirectBuffers).to(factory::setUseDirectBuffers);
 		map.from(properties::getMaxHttpPostSize).as(DataSize::toBytes).when(this::isPositive)
 				.to(serverOptions.option(UndertowOptions.MAX_ENTITY_SIZE));
@@ -165,13 +166,15 @@ public class UndertowWebServerFactoryCustomizer
 
 		@SuppressWarnings("unchecked")
 		<T> Consumer<Map<String, String>> forEach(Function<Option<T>, Consumer<T>> function) {
-			return (map) -> map.forEach((key, value) -> {
-				Option<T> option = (Option<T>) this.nameLookup.get(getCanonicalName(key));
-				Assert.state(option != null,
-						() -> "Unable to find '" + key + "' in " + ClassUtils.getShortName(this.source));
-				T parsed = option.parseValue(value, getClass().getClassLoader());
-				function.apply(option).accept(parsed);
-			});
+			return (map) -> {
+				map.forEach((key, value) -> {
+					Option<T> option = (Option<T>) this.nameLookup.get(getCanonicalName(key));
+					Assert.state(option != null,
+							"Unable to find '" + key + "' in " + ClassUtils.getShortName(this.source));
+					T parsed = option.parseValue(value, getClass().getClassLoader());
+					function.apply(option).accept(parsed);
+				});
+			};
 		}
 
 		private static String getCanonicalName(String name) {

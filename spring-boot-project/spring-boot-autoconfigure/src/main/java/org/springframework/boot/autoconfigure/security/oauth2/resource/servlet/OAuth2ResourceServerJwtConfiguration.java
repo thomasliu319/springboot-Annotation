@@ -24,7 +24,6 @@ import java.util.Base64;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.security.ConditionalOnDefaultWebSecurity;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.IssuerUriCondition;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.KeyValueCondition;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
@@ -39,7 +38,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Configures a {@link JwtDecoder} when a JWK Set URI, OpenID Connect Issuer URI or Public
@@ -51,6 +49,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * @author HaiTao Zhang
  */
 @Configuration(proxyBeanMethods = false)
+
 class OAuth2ResourceServerJwtConfiguration {
 
 	@Configuration(proxyBeanMethods = false)
@@ -98,15 +97,21 @@ class OAuth2ResourceServerJwtConfiguration {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@ConditionalOnDefaultWebSecurity
-	static class OAuth2SecurityFilterChainConfiguration {
+	@ConditionalOnMissingBean(WebSecurityConfigurerAdapter.class)
+	static class OAuth2WebSecurityConfigurerAdapter {
 
 		@Bean
 		@ConditionalOnBean(JwtDecoder.class)
-		SecurityFilterChain jwtSecurityFilterChain(HttpSecurity http) throws Exception {
-			http.authorizeRequests((requests) -> requests.anyRequest().authenticated());
-			http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
-			return http.build();
+		WebSecurityConfigurerAdapter jwtDecoderWebSecurityConfigurerAdapter() {
+			return new WebSecurityConfigurerAdapter() {
+
+				@Override
+				protected void configure(HttpSecurity http) throws Exception {
+					http.authorizeRequests((requests) -> requests.anyRequest().authenticated());
+					http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt);
+				}
+
+			};
 		}
 
 	}

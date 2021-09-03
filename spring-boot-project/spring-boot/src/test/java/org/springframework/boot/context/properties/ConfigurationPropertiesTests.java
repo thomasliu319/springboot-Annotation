@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@ import java.beans.PropertyEditorSupport;
 import java.io.File;
 import java.text.ParseException;
 import java.time.Duration;
-import java.time.Period;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,6 +39,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -52,19 +51,10 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.boot.context.properties.bind.validation.BindValidationException;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
 import org.springframework.boot.convert.DataSizeUnit;
-import org.springframework.boot.convert.DurationFormat;
-import org.springframework.boot.convert.DurationStyle;
-import org.springframework.boot.convert.DurationUnit;
-import org.springframework.boot.convert.PeriodFormat;
-import org.springframework.boot.convert.PeriodStyle;
-import org.springframework.boot.convert.PeriodUnit;
-import org.springframework.boot.env.RandomValuePropertySource;
 import org.springframework.boot.testsupport.system.CapturedOutput;
 import org.springframework.boot.testsupport.system.OutputCaptureExtension;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -76,7 +66,6 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.GenericConverter;
-import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.StandardEnvironment;
@@ -111,6 +100,7 @@ import static org.mockito.Mockito.verify;
 /**
  * Tests for {@link ConfigurationProperties @ConfigurationProperties}-annotated beans.
  * Covers {@link EnableConfigurationProperties @EnableConfigurationProperties},
+ * {@link ConfigurationPropertiesBindingPostProcessorRegistrar},
  * {@link ConfigurationPropertiesBindingPostProcessor} and
  * {@link ConfigurationPropertiesBinder}.
  *
@@ -119,7 +109,6 @@ import static org.mockito.Mockito.verify;
  * @author Phillip Webb
  * @author Stephane Nicoll
  * @author Madhura Bhave
- * @author Vladislav Kisel
  */
 @ExtendWith(OutputCaptureExtension.class)
 class ConfigurationPropertiesTests {
@@ -278,7 +267,7 @@ class ConfigurationPropertiesTests {
 		AnnotationConfigApplicationContext parent = load(BasicConfiguration.class, "name=parent");
 		this.context = new AnnotationConfigApplicationContext();
 		this.context.setParent(parent);
-		load(new Class<?>[] { BasicConfiguration.class, BasicPropertiesConsumer.class }, "name=child");
+		load(new Class[] { BasicConfiguration.class, BasicPropertiesConsumer.class }, "name=child");
 		assertThat(this.context.getBean(BasicProperties.class)).isNotNull();
 		assertThat(parent.getBean(BasicProperties.class)).isNotNull();
 		assertThat(this.context.getBean(BasicPropertiesConsumer.class).getName()).isEqualTo("parent");
@@ -381,7 +370,7 @@ class ConfigurationPropertiesTests {
 		this.context = new AnnotationConfigApplicationContext() {
 
 			@Override
-			protected void onRefresh() {
+			protected void onRefresh() throws BeansException {
 				assertThat(WithFactoryBeanConfiguration.factoryBeanInitialized).as("Initialized too early").isFalse();
 				super.onRefresh();
 			}
@@ -473,22 +462,6 @@ class ConfigurationPropertiesTests {
 		load(SimplePrefixedProperties.class);
 		SimplePrefixedProperties bean = this.context.getBean(SimplePrefixedProperties.class);
 		assertThat(bean.getBar()).isEqualTo("baz");
-	}
-
-	@Test
-	@SuppressWarnings("unchecked")
-	void loadWhenEnvironmentPrefixSetShouldBind() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		sources.replace(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
-				new SystemEnvironmentPropertySource(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
-						Collections.singletonMap("MY_SPRING_FOO_NAME", "Jane")));
-		SpringApplication application = new SpringApplication(PrefixConfiguration.class);
-		application.setApplicationContextFactory((webApplicationType) -> ConfigurationPropertiesTests.this.context);
-		application.setEnvironmentPrefix("my");
-		application.setEnvironment(this.context.getEnvironment());
-		application.run();
-		BasicProperties bean = this.context.getBean(BasicProperties.class);
-		assertThat(bean.name).isEqualTo("Jane");
 	}
 
 	@Test
@@ -647,20 +620,6 @@ class ConfigurationPropertiesTests {
 	}
 
 	@Test
-	void loadWhenBeanFactoryConversionServiceAndConverterBean() {
-		DefaultConversionService conversionService = new DefaultConversionService();
-		conversionService.addConverter(new AlienConverter());
-		this.context.getBeanFactory().setConversionService(conversionService);
-		load(new Class<?>[] { ConverterConfiguration.class, PersonAndAlienProperties.class }, "test.person=John Smith",
-				"test.alien=Alf Tanner");
-		PersonAndAlienProperties properties = this.context.getBean(PersonAndAlienProperties.class);
-		assertThat(properties.getPerson().firstName).isEqualTo("John");
-		assertThat(properties.getPerson().lastName).isEqualTo("Smith");
-		assertThat(properties.getAlien().firstName).isEqualTo("Alf");
-		assertThat(properties.getAlien().lastName).isEqualTo("Tanner");
-	}
-
-	@Test
 	void loadWhenConfigurationConverterIsNotQualifiedShouldNotConvert() {
 		assertThatExceptionOfType(BeanCreationException.class)
 				.isThrownBy(
@@ -726,13 +685,6 @@ class ConfigurationPropertiesTests {
 			assertThat(ex).hasCauseInstanceOf(BindException.class);
 			assertThat(ex.getCause()).hasCauseExactlyInstanceOf(BindValidationException.class);
 		});
-	}
-
-	@Test
-	void loadWhenConfigurationPropertiesWithValidDefaultValuesShouldNotFail() {
-		AnnotationConfigApplicationContext context = load(ValidatorPropertiesWithDefaultValues.class);
-		ValidatorPropertiesWithDefaultValues bean = context.getBean(ValidatorPropertiesWithDefaultValues.class);
-		assertThat(bean.getBar()).isEqualTo("a");
 	}
 
 	@Test
@@ -829,82 +781,11 @@ class ConfigurationPropertiesTests {
 	}
 
 	@Test
-	void loadWhenBindingToConstructorParametersWithCustomDataUnitShouldBind() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		Map<String, Object> source = new HashMap<>();
-		source.put("test.duration", "12");
-		source.put("test.size", "13");
-		source.put("test.period", "14");
-		sources.addLast(new MapPropertySource("test", source));
-		load(ConstructorParameterWithUnitConfiguration.class);
-		ConstructorParameterWithUnitProperties bean = this.context
-				.getBean(ConstructorParameterWithUnitProperties.class);
-		assertThat(bean.getDuration()).isEqualTo(Duration.ofDays(12));
-		assertThat(bean.getSize()).isEqualTo(DataSize.ofMegabytes(13));
-		assertThat(bean.getPeriod()).isEqualTo(Period.ofYears(14));
-	}
-
-	@Test
 	void loadWhenBindingToConstructorParametersWithDefaultValuesShouldBind() {
 		load(ConstructorParameterConfiguration.class);
 		ConstructorParameterProperties bean = this.context.getBean(ConstructorParameterProperties.class);
 		assertThat(bean.getFoo()).isEqualTo("hello");
 		assertThat(bean.getBar()).isEqualTo(0);
-	}
-
-	@Test
-	void loadWhenBindingToConstructorParametersWithDefaultDataUnitShouldBind() {
-		load(ConstructorParameterWithUnitConfiguration.class);
-		ConstructorParameterWithUnitProperties bean = this.context
-				.getBean(ConstructorParameterWithUnitProperties.class);
-		assertThat(bean.getDuration()).isEqualTo(Duration.ofDays(2));
-		assertThat(bean.getSize()).isEqualTo(DataSize.ofMegabytes(3));
-		assertThat(bean.getPeriod()).isEqualTo(Period.ofYears(4));
-	}
-
-	@Test
-	void loadWhenBindingToConstructorParametersWithCustomDataFormatShouldBind() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		Map<String, Object> source = new HashMap<>();
-		source.put("test.duration", "12d");
-		source.put("test.period", "13y");
-		sources.addLast(new MapPropertySource("test", source));
-		load(ConstructorParameterWithFormatConfiguration.class);
-		ConstructorParameterWithFormatProperties bean = this.context
-				.getBean(ConstructorParameterWithFormatProperties.class);
-		assertThat(bean.getDuration()).isEqualTo(Duration.ofDays(12));
-		assertThat(bean.getPeriod()).isEqualTo(Period.ofYears(13));
-	}
-
-	@Test
-	void loadWhenBindingToConstructorParametersWithNotMatchingCustomDurationFormatShouldFail() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		Map<String, Object> source = new HashMap<>();
-		source.put("test.duration", "P12D");
-		sources.addLast(new MapPropertySource("test", source));
-		assertThatExceptionOfType(Exception.class)
-				.isThrownBy(() -> load(ConstructorParameterWithFormatConfiguration.class)).havingCause()
-				.isInstanceOf(BindException.class);
-	}
-
-	@Test
-	void loadWhenBindingToConstructorParametersWithNotMatchingCustomPeriodFormatShouldFail() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		Map<String, Object> source = new HashMap<>();
-		source.put("test.period", "P12D");
-		sources.addLast(new MapPropertySource("test", source));
-		assertThatExceptionOfType(Exception.class)
-				.isThrownBy(() -> load(ConstructorParameterWithFormatConfiguration.class)).havingCause()
-				.isInstanceOf(BindException.class);
-	}
-
-	@Test
-	void loadWhenBindingToConstructorParametersWithDefaultDataFormatShouldBind() {
-		load(ConstructorParameterWithFormatConfiguration.class);
-		ConstructorParameterWithFormatProperties bean = this.context
-				.getBean(ConstructorParameterWithFormatProperties.class);
-		assertThat(bean.getDuration()).isEqualTo(Duration.ofDays(2));
-		assertThat(bean.getPeriod()).isEqualTo(Period.ofYears(3));
 	}
 
 	@Test
@@ -1047,38 +928,6 @@ class ConfigurationPropertiesTests {
 		ConstructorBindingWithOuterClassConstructorBoundProperties bean = this.context
 				.getBean(ConstructorBindingWithOuterClassConstructorBoundProperties.class);
 		assertThat(bean.getNested().getOuter().getAge()).isEqualTo(5);
-	}
-
-	@Test
-	void loadWhenConfigurationPropertiesPrefixMatchesPropertyInEnvironment() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		Map<String, Object> source = new HashMap<>();
-		source.put("test", "bar");
-		source.put("test.a", "baz");
-		sources.addLast(new MapPropertySource("test", source));
-		load(WithPublicStringConstructorPropertiesConfiguration.class);
-		WithPublicStringConstructorProperties bean = this.context.getBean(WithPublicStringConstructorProperties.class);
-		assertThat(bean.getA()).isEqualTo("baz");
-	}
-
-	@Test // gh-26201
-	void loadWhenBoundToRandomPropertyPlaceholder() {
-		MutablePropertySources sources = this.context.getEnvironment().getPropertySources();
-		sources.addFirst(new RandomValuePropertySource());
-		Map<String, Object> source = new HashMap<>();
-		source.put("com.example.bar", "${random.int[100,200]}");
-		sources.addLast(new MapPropertySource("test", source));
-		load(SimplePrefixedProperties.class);
-		SimplePrefixedProperties bean = this.context.getBean(SimplePrefixedProperties.class);
-		assertThat(bean.getBar()).isNotNull().containsOnlyDigits();
-	}
-
-	@Test
-	void boundPropertiesShouldBeRecorded() {
-		load(NestedConfiguration.class, "name=foo", "nested.name=bar");
-		BoundConfigurationProperties bound = BoundConfigurationProperties.get(this.context);
-		Set<ConfigurationPropertyName> keys = bound.getAll().keySet();
-		assertThat(keys.stream().map(ConfigurationPropertyName::toString)).contains("name", "nested.name");
 	}
 
 	private AnnotationConfigApplicationContext load(Class<?> configuration, String... inlinedProperties) {
@@ -1936,32 +1785,6 @@ class ConfigurationPropertiesTests {
 	}
 
 	@EnableConfigurationProperties
-	@ConfigurationProperties(prefix = "test")
-	static class PersonAndAlienProperties {
-
-		private Person person;
-
-		private Alien alien;
-
-		Person getPerson() {
-			return this.person;
-		}
-
-		void setPerson(Person person) {
-			this.person = person;
-		}
-
-		Alien getAlien() {
-			return this.alien;
-		}
-
-		void setAlien(Alien alien) {
-			this.alien = alien;
-		}
-
-	}
-
-	@EnableConfigurationProperties
 	@ConfigurationProperties(prefix = "sample")
 	static class MapWithNumericKeyProperties {
 
@@ -2137,63 +1960,6 @@ class ConfigurationPropertiesTests {
 
 	@ConstructorBinding
 	@ConfigurationProperties(prefix = "test")
-	static class ConstructorParameterWithUnitProperties {
-
-		private final Duration duration;
-
-		private final DataSize size;
-
-		private final Period period;
-
-		ConstructorParameterWithUnitProperties(@DefaultValue("2") @DurationUnit(ChronoUnit.DAYS) Duration duration,
-				@DefaultValue("3") @DataSizeUnit(DataUnit.MEGABYTES) DataSize size,
-				@DefaultValue("4") @PeriodUnit(ChronoUnit.YEARS) Period period) {
-			this.size = size;
-			this.duration = duration;
-			this.period = period;
-		}
-
-		Duration getDuration() {
-			return this.duration;
-		}
-
-		DataSize getSize() {
-			return this.size;
-		}
-
-		Period getPeriod() {
-			return this.period;
-		}
-
-	}
-
-	@ConstructorBinding
-	@ConfigurationProperties(prefix = "test")
-	static class ConstructorParameterWithFormatProperties {
-
-		private final Duration duration;
-
-		private final Period period;
-
-		ConstructorParameterWithFormatProperties(
-				@DefaultValue("2d") @DurationFormat(DurationStyle.SIMPLE) Duration duration,
-				@DefaultValue("3y") @PeriodFormat(PeriodStyle.SIMPLE) Period period) {
-			this.duration = duration;
-			this.period = period;
-		}
-
-		Duration getDuration() {
-			return this.duration;
-		}
-
-		Period getPeriod() {
-			return this.period;
-		}
-
-	}
-
-	@ConstructorBinding
-	@ConfigurationProperties(prefix = "test")
 	@Validated
 	static class ConstructorParameterValidatedProperties {
 
@@ -2212,16 +1978,6 @@ class ConfigurationPropertiesTests {
 
 	@EnableConfigurationProperties(ConstructorParameterProperties.class)
 	static class ConstructorParameterConfiguration {
-
-	}
-
-	@EnableConfigurationProperties(ConstructorParameterWithUnitProperties.class)
-	static class ConstructorParameterWithUnitConfiguration {
-
-	}
-
-	@EnableConfigurationProperties(ConstructorParameterWithFormatProperties.class)
-	static class ConstructorParameterWithFormatConfiguration {
 
 	}
 
@@ -2250,16 +2006,6 @@ class ConfigurationPropertiesTests {
 		public Person convert(String source) {
 			String[] content = StringUtils.split(source, " ");
 			return new Person(content[0], content[1]);
-		}
-
-	}
-
-	static class AlienConverter implements Converter<String, Alien> {
-
-		@Override
-		public Alien convert(String source) {
-			String[] content = StringUtils.split(source, " ");
-			return new Alien(content[0], content[1]);
 		}
 
 	}
@@ -2297,7 +2043,7 @@ class ConfigurationPropertiesTests {
 	static class PersonPropertyEditor extends PropertyEditorSupport {
 
 		@Override
-		public void setAsText(String text) {
+		public void setAsText(String text) throws IllegalArgumentException {
 			String[] content = text.split(",");
 			setValue(new Person(content[1], content[0]));
 		}
@@ -2311,27 +2057,6 @@ class ConfigurationPropertiesTests {
 		private final String lastName;
 
 		Person(String firstName, String lastName) {
-			this.firstName = firstName;
-			this.lastName = lastName;
-		}
-
-		String getFirstName() {
-			return this.firstName;
-		}
-
-		String getLastName() {
-			return this.lastName;
-		}
-
-	}
-
-	static class Alien {
-
-		private final String firstName;
-
-		private final String lastName;
-
-		Alien(String firstName, String lastName) {
 			this.firstName = firstName;
 			this.lastName = lastName;
 		}
@@ -2701,12 +2426,6 @@ class ConfigurationPropertiesTests {
 			}
 
 		}
-
-	}
-
-	@Configuration
-	@EnableConfigurationProperties(WithPublicStringConstructorProperties.class)
-	static class WithPublicStringConstructorPropertiesConfiguration {
 
 	}
 

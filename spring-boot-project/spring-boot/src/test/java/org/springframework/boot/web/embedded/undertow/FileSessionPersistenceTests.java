@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.boot.web.embedded.undertow;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -44,7 +45,7 @@ class FileSessionPersistenceTests {
 	private Date expiration = new Date(System.currentTimeMillis() + 10000);
 
 	@BeforeEach
-	void setup(@TempDir File tempDir) {
+	void setup(@TempDir File tempDir) throws IOException {
 		this.dir = tempDir;
 		this.dir.mkdir();
 		this.persistence = new FileSessionPersistence(this.dir);
@@ -81,7 +82,7 @@ class FileSessionPersistenceTests {
 		this.persistence.persistSessions("test", sessionData);
 		Map<String, PersistentSession> restored = this.persistence.loadSessionAttributes("test", this.classLoader);
 		assertThat(restored).isNotNull();
-		assertThat(restored).doesNotContainKey("abc");
+		assertThat(restored.containsKey("abc")).isFalse();
 	}
 
 	@Test

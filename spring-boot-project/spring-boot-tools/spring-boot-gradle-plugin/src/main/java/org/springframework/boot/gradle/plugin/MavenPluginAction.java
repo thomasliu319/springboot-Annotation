@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,17 +19,15 @@ package org.springframework.boot.gradle.plugin;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
+import org.gradle.api.artifacts.maven.MavenResolver;
+import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.Upload;
 
 /**
- * {@link Action} that is executed in response to the
- * {@link org.gradle.api.plugins.MavenPlugin} being applied.
+ * {@link Action} that is executed in response to the {@link MavenPlugin} being applied.
  *
- * @deprecated since 2.5.0 in favor of using the {@link MavenPublishPlugin}
  * @author Andy Wilkinson
  */
-@Deprecated
 final class MavenPluginAction implements PluginApplicationAction {
 
 	private final String uploadTaskName;
@@ -40,7 +38,7 @@ final class MavenPluginAction implements PluginApplicationAction {
 
 	@Override
 	public Class<? extends Plugin<? extends Project>> getPluginClass() {
-		return org.gradle.api.plugins.MavenPlugin.class;
+		return MavenPlugin.class;
 	}
 
 	@Override
@@ -53,7 +51,7 @@ final class MavenPluginAction implements PluginApplicationAction {
 	}
 
 	private void clearConfigurationMappings(Upload upload) {
-		upload.getRepositories().withType(org.gradle.api.artifacts.maven.MavenResolver.class,
+		upload.getRepositories().withType(MavenResolver.class,
 				(resolver) -> resolver.getPom().getScopeMappings().getMappings().clear());
 	}
 

@@ -16,7 +16,6 @@
 
 package org.springframework.boot.cloud.cloudfoundry;
 
-import org.apache.commons.logging.LogFactory;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.cloud.CloudFoundryVcapEnvironmentPostProcessor;
@@ -34,8 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class CloudFoundryVcapEnvironmentPostProcessorTests {
 
-	private final CloudFoundryVcapEnvironmentPostProcessor initializer = new CloudFoundryVcapEnvironmentPostProcessor(
-			LogFactory.getLog(getClass()));
+	private final CloudFoundryVcapEnvironmentPostProcessor initializer = new CloudFoundryVcapEnvironmentPostProcessor();
 
 	private final ConfigurableApplicationContext context = new AnnotationConfigApplicationContext();
 

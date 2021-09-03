@@ -19,7 +19,6 @@ package org.springframework.boot.configurationsample.fieldvalues;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Period;
 
 import org.springframework.boot.configurationsample.ConfigurationProperties;
 import org.springframework.util.MimeType;
@@ -125,8 +124,6 @@ public class FieldValues {
 
 	private Duration durationDays = Duration.ofDays(50);
 
-	private Duration durationZero = Duration.ZERO;
-
 	private DataSize dataSizeNone;
 
 	private DataSize dataSizeBytes = DataSize.ofBytes(5);
@@ -138,17 +135,5 @@ public class FieldValues {
 	private DataSize dataSizeGigabytes = DataSize.ofGigabytes(30);
 
 	private DataSize dataSizeTerabytes = DataSize.ofTerabytes(40);
-
-	private Period periodNone;
-
-	private Period periodDays = Period.ofDays(3);
-
-	private Period periodWeeks = Period.ofWeeks(2);
-
-	private Period periodMonths = Period.ofMonths(10);
-
-	private Period periodYears = Period.ofYears(15);
-
-	private Period periodZero = Period.ZERO;
 
 }

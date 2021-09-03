@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,71 +96,39 @@ class SslServerCustomizer implements JettyServerCustomizer {
 		if (this.http2 == null || !this.http2.isEnabled()) {
 			return createHttp11ServerConnector(server, config, sslContextFactory);
 		}
-		Assert.state(isJettyAlpnPresent(),
-				() -> "An 'org.eclipse.jetty:jetty-alpn-*-server' dependency is required for HTTP/2 support.");
-		Assert.state(isJettyHttp2Present(),
-				() -> "The 'org.eclipse.jetty.http2:http2-server' dependency is required for HTTP/2 support.");
+		Assert.state(isAlpnPresent(),
+				() -> "The 'org.eclipse.jetty:jetty-alpn-server' dependency is required for HTTP/2 support.");
+		Assert.state(isConscryptPresent(), () -> "The 'org.eclipse.jetty.http2:http2-server' and Conscrypt "
+				+ "dependencies are required for HTTP/2 support.");
 		return createHttp2ServerConnector(server, config, sslContextFactory);
 	}
 
 	private ServerConnector createHttp11ServerConnector(Server server, HttpConfiguration config,
 			SslContextFactory.Server sslContextFactory) {
 		HttpConnectionFactory connectionFactory = new HttpConnectionFactory(config);
-		return new SslValidatingServerConnector(server, sslContextFactory, this.ssl.getKeyAlias(),
-				createSslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()), connectionFactory);
+		SslConnectionFactory sslConnectionFactory = new SslConnectionFactory(sslContextFactory,
+				HttpVersion.HTTP_1_1.asString());
+		return new SslValidatingServerConnector(server, sslContextFactory, this.ssl.getKeyAlias(), sslConnectionFactory,
+				connectionFactory);
 	}
 
-	private SslConnectionFactory createSslConnectionFactory(SslContextFactory.Server sslContextFactory,
-			String protocol) {
-		try {
-			return new SslConnectionFactory(sslContextFactory, protocol);
-		}
-		catch (NoSuchMethodError ex) {
-			// Jetty 10
-			try {
-				return SslConnectionFactory.class.getConstructor(SslContextFactory.Server.class, String.class)
-						.newInstance(sslContextFactory, protocol);
-			}
-			catch (Exception ex2) {
-				throw new RuntimeException(ex2);
-			}
-		}
-	}
-
-	private boolean isJettyAlpnPresent() {
-		return ClassUtils.isPresent("org.eclipse.jetty.alpn.server.ALPNServerConnectionFactory", null);
-	}
-
-	private boolean isJettyHttp2Present() {
+	private boolean isAlpnPresent() {
 		return ClassUtils.isPresent("org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory", null);
+	}
+
+	private boolean isConscryptPresent() {
+		return ClassUtils.isPresent("org.conscrypt.Conscrypt", null);
 	}
 
 	private ServerConnector createHttp2ServerConnector(Server server, HttpConfiguration config,
 			SslContextFactory.Server sslContextFactory) {
-		HttpConnectionFactory http = new HttpConnectionFactory(config);
 		HTTP2ServerConnectionFactory h2 = new HTTP2ServerConnectionFactory(config);
-		ALPNServerConnectionFactory alpn = createAlpnServerConnectionFactory();
+		ALPNServerConnectionFactory alpn = new ALPNServerConnectionFactory();
 		sslContextFactory.setCipherComparator(HTTP2Cipher.COMPARATOR);
-		if (isConscryptPresent()) {
-			sslContextFactory.setProvider("Conscrypt");
-		}
-		SslConnectionFactory ssl = createSslConnectionFactory(sslContextFactory, alpn.getProtocol());
-		return new SslValidatingServerConnector(server, sslContextFactory, this.ssl.getKeyAlias(), ssl, alpn, h2, http);
-	}
-
-	private ALPNServerConnectionFactory createAlpnServerConnectionFactory() {
-		try {
-			return new ALPNServerConnectionFactory();
-		}
-		catch (IllegalStateException ex) {
-			throw new IllegalStateException(
-					"An 'org.eclipse.jetty:jetty-alpn-*-server' dependency is required for HTTP/2 support.", ex);
-		}
-	}
-
-	private boolean isConscryptPresent() {
-		return ClassUtils.isPresent("org.conscrypt.Conscrypt", null)
-				&& ClassUtils.isPresent("org.eclipse.jetty.alpn.conscrypt.server.ConscryptServerALPNProcessor", null);
+		sslContextFactory.setProvider("Conscrypt");
+		SslConnectionFactory ssl = new SslConnectionFactory(sslContextFactory, alpn.getProtocol());
+		return new SslValidatingServerConnector(server, sslContextFactory, this.ssl.getKeyAlias(), ssl, alpn, h2,
+				new HttpConnectionFactory(config));
 	}
 
 	/**
@@ -257,9 +225,9 @@ class SslServerCustomizer implements JettyServerCustomizer {
 	 */
 	static class SslValidatingServerConnector extends ServerConnector {
 
-		private final SslContextFactory sslContextFactory;
+		private SslContextFactory sslContextFactory;
 
-		private final String keyAlias;
+		private String keyAlias;
 
 		SslValidatingServerConnector(Server server, SslContextFactory sslContextFactory, String keyAlias,
 				SslConnectionFactory sslConnectionFactory, HttpConnectionFactory connectionFactory) {

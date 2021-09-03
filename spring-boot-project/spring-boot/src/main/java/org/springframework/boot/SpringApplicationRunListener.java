@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,19 +38,16 @@ public interface SpringApplicationRunListener {
 	/**
 	 * Called immediately when the run method has first started. Can be used for very
 	 * early initialization.
-	 * @param bootstrapContext the bootstrap context
 	 */
-	default void starting(ConfigurableBootstrapContext bootstrapContext) {
+	default void starting() {
 	}
 
 	/**
 	 * Called once the environment has been prepared, but before the
 	 * {@link ApplicationContext} has been created.
-	 * @param bootstrapContext the bootstrap context
 	 * @param environment the environment
 	 */
-	default void environmentPrepared(ConfigurableBootstrapContext bootstrapContext,
-			ConfigurableEnvironment environment) {
+	default void environmentPrepared(ConfigurableEnvironment environment) {
 	}
 
 	/**

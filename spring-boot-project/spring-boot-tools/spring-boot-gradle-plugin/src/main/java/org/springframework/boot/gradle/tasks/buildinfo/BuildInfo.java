@@ -24,7 +24,6 @@ import java.util.Map;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
-import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.internal.ConventionTask;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputDirectory;
@@ -45,12 +44,7 @@ public class BuildInfo extends ConventionTask {
 
 	private final BuildInfoProperties properties = new BuildInfoProperties(getProject());
 
-	private final DirectoryProperty destinationDir;
-
-	public BuildInfo() {
-		this.destinationDir = getProject().getObjects().directoryProperty()
-				.convention(getProject().getLayout().getBuildDirectory());
-	}
+	private File destinationDir;
 
 	/**
 	 * Generates the {@code build-info.properties} file in the configured
@@ -79,7 +73,7 @@ public class BuildInfo extends ConventionTask {
 	 */
 	@OutputDirectory
 	public File getDestinationDir() {
-		return this.destinationDir.getAsFile().get();
+		return (this.destinationDir != null) ? this.destinationDir : getProject().getBuildDir();
 	}
 
 	/**
@@ -87,7 +81,7 @@ public class BuildInfo extends ConventionTask {
 	 * @param destinationDir the destination directory
 	 */
 	public void setDestinationDir(File destinationDir) {
-		this.destinationDir.set(destinationDir);
+		this.destinationDir = destinationDir;
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,27 @@
 
 package org.springframework.boot.autoconfigure.data.elasticsearch;
 
-import java.math.BigDecimal;
-import java.util.Collections;
+import java.time.Duration;
 
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.TestAutoConfigurationPackage;
-import org.springframework.boot.autoconfigure.data.elasticsearch.city.City;
-import org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration;
+import org.springframework.boot.autoconfigure.elasticsearch.rest.RestClientAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.elasticsearch.core.ElasticsearchEntityMapper;
 import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.core.EntityMapper;
 import org.springframework.data.elasticsearch.core.ReactiveElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.convert.ElasticsearchConverter;
-import org.springframework.data.elasticsearch.core.convert.ElasticsearchCustomConversions;
 import org.springframework.data.elasticsearch.core.mapping.SimpleElasticsearchMappingContext;
-import org.springframework.data.mapping.model.SimpleTypeHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -49,14 +48,17 @@ import static org.mockito.Mockito.mock;
  * @author Artur Konczak
  * @author Brian Clozel
  * @author Peter-Josef Meisch
- * @author Scott Frederick
- * @author Stephane Nicoll
  */
+@Testcontainers(disabledWithoutDocker = true)
 class ElasticsearchDataAutoConfigurationTests {
 
-	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(ElasticsearchRestClientAutoConfiguration.class,
-					ReactiveElasticsearchRestClientAutoConfiguration.class, ElasticsearchDataAutoConfiguration.class));
+	@Container
+	static ElasticsearchContainer elasticsearch = new ElasticsearchContainer().withStartupAttempts(5)
+			.withStartupTimeout(Duration.ofMinutes(10));
+
+	private ApplicationContextRunner contextRunner = new ApplicationContextRunner().withConfiguration(
+			AutoConfigurations.of(ElasticsearchAutoConfiguration.class, RestClientAutoConfiguration.class,
+					ReactiveRestClientAutoConfiguration.class, ElasticsearchDataAutoConfiguration.class));
 
 	@BeforeEach
 	void setUp() {
@@ -69,29 +71,39 @@ class ElasticsearchDataAutoConfigurationTests {
 	}
 
 	@Test
+	void defaultTransportBeansAreRegistered() {
+		this.contextRunner
+				.withPropertyValues(
+						"spring.data.elasticsearch.cluster-nodes:" + elasticsearch.getTcpHost().getHostString() + ":"
+								+ elasticsearch.getTcpHost().getPort(),
+						"spring.data.elasticsearch.cluster-name:docker-cluster")
+				.run((context) -> assertThat(context).hasSingleBean(ElasticsearchTemplate.class)
+						.hasSingleBean(SimpleElasticsearchMappingContext.class)
+						.hasSingleBean(ElasticsearchConverter.class));
+	}
+
+	@Test
+	void defaultTransportBeansNotRegisteredIfNoTransportClient() {
+		this.contextRunner.run((context) -> assertThat(context).doesNotHaveBean(ElasticsearchTemplate.class));
+	}
+
+	@Test
 	void defaultRestBeansRegistered() {
 		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(ElasticsearchRestTemplate.class)
 				.hasSingleBean(ReactiveElasticsearchTemplate.class).hasSingleBean(ElasticsearchConverter.class)
-				.hasSingleBean(ElasticsearchConverter.class).hasSingleBean(ElasticsearchCustomConversions.class));
+				.hasSingleBean(SimpleElasticsearchMappingContext.class).hasSingleBean(EntityMapper.class)
+				.hasSingleBean(ElasticsearchConverter.class));
 	}
 
 	@Test
-	void defaultConversionsRegisterBigDecimalAsSimpleType() {
-		this.contextRunner.run((context) -> {
-			SimpleElasticsearchMappingContext mappingContext = context.getBean(SimpleElasticsearchMappingContext.class);
-			assertThat(mappingContext)
-					.extracting("simpleTypeHolder", InstanceOfAssertFactories.type(SimpleTypeHolder.class)).satisfies(
-							(simpleTypeHolder) -> assertThat(simpleTypeHolder.isSimpleType(BigDecimal.class)).isTrue());
-		});
+	void defaultEntityMapperRegistered() {
+		this.contextRunner.run((context) -> assertThat(context).hasSingleBean(EntityMapper.class));
 	}
 
 	@Test
-	void customConversionsShouldBeUsed() {
-		this.contextRunner.withUserConfiguration(CustomElasticsearchCustomConversions.class).run((context) -> {
-			assertThat(context).hasSingleBean(ElasticsearchCustomConversions.class).hasBean("testCustomConversions");
-			assertThat(context.getBean(ElasticsearchConverter.class).getConversionService()
-					.canConvert(ElasticsearchRestTemplate.class, Boolean.class)).isTrue();
-		});
+	void customTransportTemplateShouldBeUsed() {
+		this.contextRunner.withUserConfiguration(CustomTransportTemplate.class).run((context) -> assertThat(context)
+				.getBeanNames(ElasticsearchTemplate.class).hasSize(1).contains("elasticsearchTemplate"));
 	}
 
 	@Test
@@ -108,19 +120,17 @@ class ElasticsearchDataAutoConfigurationTests {
 	}
 
 	@Test
-	void shouldFilterInitialEntityScanWithDocumentAnnotation() {
-		this.contextRunner.withUserConfiguration(EntityScanConfig.class).run((context) -> {
-			SimpleElasticsearchMappingContext mappingContext = context.getBean(SimpleElasticsearchMappingContext.class);
-			assertThat(mappingContext.hasPersistentEntityFor(City.class)).isTrue();
-		});
+	void customEntityMapperShouldeBeUsed() {
+		this.contextRunner.withUserConfiguration(CustomEntityMapper.class).run((context) -> assertThat(context)
+				.getBeanNames(EntityMapper.class).containsExactly("elasticsearchEntityMapper"));
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	static class CustomElasticsearchCustomConversions {
+	static class CustomTransportTemplate {
 
 		@Bean
-		ElasticsearchCustomConversions testCustomConversions() {
-			return new ElasticsearchCustomConversions(Collections.singletonList(new MyConverter()));
+		ElasticsearchTemplate elasticsearchTemplate() {
+			return mock(ElasticsearchTemplate.class);
 		}
 
 	}
@@ -146,16 +156,11 @@ class ElasticsearchDataAutoConfigurationTests {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@TestAutoConfigurationPackage(City.class)
-	static class EntityScanConfig {
+	static class CustomEntityMapper {
 
-	}
-
-	static class MyConverter implements Converter<ElasticsearchRestTemplate, Boolean> {
-
-		@Override
-		public Boolean convert(ElasticsearchRestTemplate source) {
-			return null;
+		@Bean
+		EntityMapper elasticsearchEntityMapper() {
+			return mock(ElasticsearchEntityMapper.class);
 		}
 
 	}

@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
@@ -53,9 +52,8 @@ class HazelcastSessionConfiguration {
 
 		@Autowired
 		public void customize(SessionProperties sessionProperties,
-				HazelcastSessionProperties hazelcastSessionProperties, ServerProperties serverProperties) {
-			Duration timeout = sessionProperties
-					.determineTimeout(() -> serverProperties.getServlet().getSession().getTimeout());
+				HazelcastSessionProperties hazelcastSessionProperties) {
+			Duration timeout = sessionProperties.getTimeout();
 			if (timeout != null) {
 				setMaxInactiveIntervalInSeconds((int) timeout.getSeconds());
 			}

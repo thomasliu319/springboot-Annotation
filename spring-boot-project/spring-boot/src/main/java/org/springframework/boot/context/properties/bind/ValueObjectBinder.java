@@ -37,8 +37,6 @@ import org.springframework.core.KotlinDetector;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.core.ResolvableType;
-import org.springframework.core.annotation.MergedAnnotation;
-import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.convert.ConversionException;
 import org.springframework.util.Assert;
 
@@ -48,7 +46,6 @@ import org.springframework.util.Assert;
  * @author Madhura Bhave
  * @author Stephane Nicoll
  * @author Phillip Webb
- * @author Scott Frederick
  */
 class ValueObjectBinder implements DataObjectBinder {
 
@@ -190,8 +187,6 @@ class ValueObjectBinder implements DataObjectBinder {
 	 */
 	private static final class KotlinValueObject<T> extends ValueObject<T> {
 
-		private static final Annotation[] ANNOTATION_ARRAY = new Annotation[0];
-
 		private final List<ConstructorParameter> constructorParameters;
 
 		private KotlinValueObject(Constructor<T> primaryConstructor, KFunction<T> kotlinConstructor,
@@ -205,18 +200,13 @@ class ValueObjectBinder implements DataObjectBinder {
 			List<KParameter> parameters = kotlinConstructor.getParameters();
 			List<ConstructorParameter> result = new ArrayList<>(parameters.size());
 			for (KParameter parameter : parameters) {
-				String name = getParameterName(parameter);
+				String name = parameter.getName();
 				ResolvableType parameterType = ResolvableType
 						.forType(ReflectJvmMapping.getJavaType(parameter.getType()), type);
-				Annotation[] annotations = parameter.getAnnotations().toArray(ANNOTATION_ARRAY);
+				Annotation[] annotations = parameter.getAnnotations().toArray(new Annotation[0]);
 				result.add(new ConstructorParameter(name, parameterType, annotations));
 			}
 			return Collections.unmodifiableList(result);
-		}
-
-		private String getParameterName(KParameter parameter) {
-			return MergedAnnotations.from(parameter, parameter.getAnnotations().toArray(ANNOTATION_ARRAY))
-					.get(Name.class).getValue(MergedAnnotation.VALUE, String.class).orElseGet(parameter::getName);
 		}
 
 		@Override
@@ -256,8 +246,7 @@ class ValueObjectBinder implements DataObjectBinder {
 			Parameter[] parameters = constructor.getParameters();
 			List<ConstructorParameter> result = new ArrayList<>(parameters.length);
 			for (int i = 0; i < parameters.length; i++) {
-				String name = MergedAnnotations.from(parameters[i]).get(Name.class)
-						.getValue(MergedAnnotation.VALUE, String.class).orElse(names[i]);
+				String name = names[i];
 				ResolvableType parameterType = ResolvableType.forMethodParameter(new MethodParameter(constructor, i),
 						type);
 				Annotation[] annotations = parameters[i].getDeclaredAnnotations();

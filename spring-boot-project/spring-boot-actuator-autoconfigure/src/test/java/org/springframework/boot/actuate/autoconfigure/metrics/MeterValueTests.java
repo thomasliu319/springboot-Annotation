@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,20 +30,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for {@link MeterValue}.
  *
  * @author Phillip Webb
- * @author Stephane Nicoll
  */
 class MeterValueTests {
 
 	@Test
-	void getValueForDistributionSummaryWhenFromNumberShouldReturnDoubleValue() {
-		MeterValue meterValue = MeterValue.valueOf(123.42);
-		assertThat(meterValue.getValue(Type.DISTRIBUTION_SUMMARY)).isEqualTo(123.42);
+	void getValueForDistributionSummaryWhenFromLongShouldReturnLongValue() {
+		MeterValue meterValue = MeterValue.valueOf(123L);
+		assertThat(meterValue.getValue(Type.DISTRIBUTION_SUMMARY)).isEqualTo(123);
 	}
 
 	@Test
-	void getValueForDistributionSummaryWhenFromNumberStringShouldReturnDoubleValue() {
-		MeterValue meterValue = MeterValue.valueOf("123.42");
-		assertThat(meterValue.getValue(Type.DISTRIBUTION_SUMMARY)).isEqualTo(123.42);
+	void getValueForDistributionSummaryWhenFromNumberStringShouldReturnLongValue() {
+		MeterValue meterValue = MeterValue.valueOf("123");
+		assertThat(meterValue.getValue(Type.DISTRIBUTION_SUMMARY)).isEqualTo(123);
 	}
 
 	@Test
@@ -53,8 +52,8 @@ class MeterValueTests {
 	}
 
 	@Test
-	void getValueForTimerWhenFromNumberShouldReturnMsToNanosValue() {
-		MeterValue meterValue = MeterValue.valueOf(123d);
+	void getValueForTimerWhenFromLongShouldReturnMsToNanosValue() {
+		MeterValue meterValue = MeterValue.valueOf(123L);
 		assertThat(meterValue.getValue(Type.TIMER)).isEqualTo(123000000);
 	}
 
@@ -82,11 +81,11 @@ class MeterValueTests {
 	@Test
 	void valueOfShouldWorkInBinder() {
 		MockEnvironment environment = new MockEnvironment();
-		TestPropertyValues.of("duration=10ms", "number=20.42").applyTo(environment);
+		TestPropertyValues.of("duration=10ms", "long=20").applyTo(environment);
 		assertThat(Binder.get(environment).bind("duration", Bindable.of(MeterValue.class)).get().getValue(Type.TIMER))
 				.isEqualTo(10000000);
-		assertThat(Binder.get(environment).bind("number", Bindable.of(MeterValue.class)).get()
-				.getValue(Type.DISTRIBUTION_SUMMARY)).isEqualTo(20.42);
+		assertThat(Binder.get(environment).bind("long", Bindable.of(MeterValue.class)).get().getValue(Type.TIMER))
+				.isEqualTo(20000000);
 	}
 
 }

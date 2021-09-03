@@ -105,7 +105,7 @@ abstract class FilteringSpringBootCondition extends SpringBootCondition
 	 */
 	protected static Class<?> resolve(String className, ClassLoader classLoader) throws ClassNotFoundException {
 		if (classLoader != null) {
-			return Class.forName(className, false, classLoader);
+			return classLoader.loadClass(className);
 		}
 		return Class.forName(className);
 	}

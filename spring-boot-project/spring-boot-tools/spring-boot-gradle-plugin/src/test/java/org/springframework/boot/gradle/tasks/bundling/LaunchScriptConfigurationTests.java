@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.springframework.boot.gradle.tasks.bundling;
 
 import org.gradle.api.Project;
-import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,8 +43,7 @@ class LaunchScriptConfigurationTests {
 
 	@Test
 	void initInfoProvidesUsesArchiveBaseNameByDefault() {
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
+		given(this.task.getBaseName()).willReturn("base-name");
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoProvides",
 				"base-name");
 	}
@@ -53,16 +51,13 @@ class LaunchScriptConfigurationTests {
 	@Test
 	void initInfoShortDescriptionUsesDescriptionByDefault() {
 		given(this.project.getDescription()).willReturn("Project description");
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoShortDescription",
 				"Project description");
 	}
 
 	@Test
 	void initInfoShortDescriptionUsesArchiveBaseNameWhenDescriptionIsNull() {
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
+		given(this.task.getBaseName()).willReturn("base-name");
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoShortDescription",
 				"base-name");
 	}
@@ -70,16 +65,13 @@ class LaunchScriptConfigurationTests {
 	@Test
 	void initInfoShortDescriptionUsesSingleLineVersionOfMultiLineProjectDescription() {
 		given(this.project.getDescription()).willReturn("Project\ndescription");
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoShortDescription",
 				"Project description");
 	}
 
 	@Test
 	void initInfoDescriptionUsesArchiveBaseNameWhenDescriptionIsNull() {
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
+		given(this.task.getBaseName()).willReturn("base-name");
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoDescription",
 				"base-name");
 	}
@@ -87,8 +79,6 @@ class LaunchScriptConfigurationTests {
 	@Test
 	void initInfoDescriptionUsesProjectDescriptionByDefault() {
 		given(this.project.getDescription()).willReturn("Project description");
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoDescription",
 				"Project description");
 	}
@@ -96,17 +86,8 @@ class LaunchScriptConfigurationTests {
 	@Test
 	void initInfoDescriptionUsesCorrectlyFormattedMultiLineProjectDescription() {
 		given(this.project.getDescription()).willReturn("The\nproject\ndescription");
-		Property<String> baseName = stringProperty("base-name");
-		given(this.task.getArchiveBaseName()).willReturn(baseName);
 		assertThat(new LaunchScriptConfiguration(this.task).getProperties()).containsEntry("initInfoDescription",
 				"The\n#  project\n#  description");
-	}
-
-	@SuppressWarnings("unchecked")
-	private Property<String> stringProperty(String value) {
-		Property<String> property = mock(Property.class);
-		given(property.get()).willReturn(value);
-		return property;
 	}
 
 }

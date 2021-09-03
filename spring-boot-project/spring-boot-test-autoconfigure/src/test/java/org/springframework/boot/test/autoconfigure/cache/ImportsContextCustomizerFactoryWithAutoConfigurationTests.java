@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@ import java.lang.annotation.RetentionPolicy;
 
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
-import org.junit.platform.launcher.core.LauncherFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
@@ -32,6 +28,9 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.ExampleEntity;
+import org.springframework.boot.testsupport.junit.platform.Launcher;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequest;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequestBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ContextConfiguration;
@@ -50,7 +49,7 @@ class ImportsContextCustomizerFactoryWithAutoConfigurationTests {
 	static ApplicationContext contextFromTest;
 
 	@Test
-	void testClassesThatHaveSameAnnotationsShareAContext() {
+	void testClassesThatHaveSameAnnotationsShareAContext() throws Throwable {
 		executeTests(DataJpaTest1.class);
 		ApplicationContext test1Context = contextFromTest;
 		executeTests(DataJpaTest3.class);
@@ -59,7 +58,7 @@ class ImportsContextCustomizerFactoryWithAutoConfigurationTests {
 	}
 
 	@Test
-	void testClassesThatOnlyHaveDifferingUnrelatedAnnotationsShareAContext() {
+	void testClassesThatOnlyHaveDifferingUnrelatedAnnotationsShareAContext() throws Throwable {
 		executeTests(DataJpaTest1.class);
 		ApplicationContext test1Context = contextFromTest;
 		executeTests(DataJpaTest2.class);
@@ -68,7 +67,7 @@ class ImportsContextCustomizerFactoryWithAutoConfigurationTests {
 	}
 
 	@Test
-	void testClassesThatOnlyHaveDifferingPropertyMappedAnnotationAttributesDoNotShareAContext() {
+	void testClassesThatOnlyHaveDifferingPropertyMappedAnnotationAttributesDoNotShareAContext() throws Throwable {
 		executeTests(DataJpaTest1.class);
 		ApplicationContext test1Context = contextFromTest;
 		executeTests(DataJpaTest4.class);
@@ -76,10 +75,11 @@ class ImportsContextCustomizerFactoryWithAutoConfigurationTests {
 		assertThat(test1Context).isNotSameAs(test2Context);
 	}
 
-	private void executeTests(Class<?> testClass) {
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+	private void executeTests(Class<?> testClass) throws Throwable {
+		ClassLoader classLoader = testClass.getClassLoader();
+		LauncherDiscoveryRequest request = new LauncherDiscoveryRequestBuilder(classLoader)
 				.selectors(DiscoverySelectors.selectClass(testClass)).build();
-		Launcher launcher = LauncherFactory.create();
+		Launcher launcher = new Launcher(testClass.getClassLoader());
 		launcher.execute(request);
 	}
 

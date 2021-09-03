@@ -22,9 +22,6 @@ do as they were designed before this was clarified.
 |===
 | Name | Location
 
-| AOProfiling (Aspect-oriented profiling)
-| https://github.com/rechnerherz/aoprofiling-spring-boot-starter
-
 | https://camel.apache.org/camel-spring-boot/latest/spring-boot.html[Apache Camel]
 | https://github.com/apache/camel-spring-boot
 
@@ -33,9 +30,6 @@ do as they were designed before this was clarified.
 
 | https://qpid.apache.org/components/jms/[Apache Qpid]
 | https://github.com/amqphub/amqp-10-jms-spring-boot
-
-| https://rocketmq.apache.org/[Apache RocketMQ]
-| https://github.com/ThierrySquirrel/rocketmq-spring-boot-starter
 
 | https://wicket.apache.org/[Apache Wicket]
 | https://github.com/MarcGiffing/wicket-spring-boot
@@ -55,9 +49,6 @@ do as they were designed before this was clarified.
 | https://docs.microsoft.com/en-us/azure/application-insights/app-insights-overview[Azure Application Insights]
 | https://github.com/Microsoft/ApplicationInsights-Java/tree/master/azure-application-insights-spring-boot-starter
 
-| https://github.com/bitcoin/bitcoin[Bitcoin]
-| https://github.com/theborakompanioni/bitcoin-spring-boot-starter
-
 | https://github.com/vladimir-bukhtoyarov/bucket4j/[Bucket4j]
 | https://github.com/MarcGiffing/bucket4j-spring-boot-starter
 
@@ -75,9 +66,6 @@ do as they were designed before this was clarified.
 
 | DataSource decorating (https://github.com/p6spy/p6spy[P6Spy], https://github.com/ttddyy/datasource-proxy[datasource-proxy], https://github.com/vladmihalcea/flexy-pool[FlexyPool])
 | https://github.com/gavlyukovskiy/spring-boot-data-source-decorator
-
-| https://github.com/Allurx/desensitization[desensitization]
-| https://github.com/Allurx/desensitization-spring-boot
 
 | https://github.com/docker-java/docker-java/[Docker Java] and https://github.com/spotify/docker-client/[Docker Client]
 | https://github.com/jliu666/docker-api-spring-boot
@@ -107,7 +95,7 @@ do as they were designed before this was clarified.
 | https://github.com/dabla/grizzly-spring-boot-starter
 
 | https://www.grpc.io/[gRPC]
-| https://github.com/LogNet/grpc-spring-boot-starter & https://github.com/yidongnan/grpc-spring-boot-starter
+| https://github.com/LogNet/grpc-spring-boot-starter
 
 | https://ha-jdbc.github.io/[HA JDBC]
 | https://github.com/lievendoclo/hajdbc-spring-boot
@@ -121,12 +109,6 @@ do as they were designed before this was clarified.
 | Hiatus for Spring Boot
 | https://github.com/jihor/hiatus-spring-boot
 
-| https://www.hyperledger.org/use/fabric[Hyperledger Fabric]
-| https://github.com/bxforce/hyperledger-fabric-spring-boot
-
-| https://www.ibm.com/products/mq[IBM MQ]
-| https://github.com/ibm-messaging/mq-jms-spring
-
 | https://infinispan.org/[Infinispan]
 | https://github.com/infinispan/infinispan-spring-boot
 
@@ -139,9 +121,6 @@ do as they were designed before this was clarified.
 | https://javers.org[JaVers]
 | https://github.com/javers/javers
 
-| https://www.jobrunr.io[JobRunr]
-| https://github.com/jobrunr/jobrunr
-
 | https://github.com/sbraconnier/jodconverter[JODConverter]
 | https://github.com/sbraconnier/jodconverter
 
@@ -153,9 +132,6 @@ do as they were designed before this was clarified.
 
 | https://logback.qos.ch/access.html[Logback-access]
 | https://github.com/akihyro/logback-access-spring-boot-starter
-
-| https://github.com/mulesoft/mule[Mule 4]
-| https://github.com/hawkore/mule4-spring-boot-starter
 
 | https://github.com/mybatis/mybatis-3[MyBatis]
 | https://github.com/mybatis/mybatis-spring-boot
@@ -172,9 +148,6 @@ do as they were designed before this was clarified.
 | https://github.com/nutzam/nutz[Nutz]
 | https://github.com/nutzam/nutzmore
 
-| https://groupe-sii.github.io/ogham/[Ogham]
-| https://github.com/groupe-sii/ogham/tree/master/ogham-spring-boot-starter-all, https://github.com/groupe-sii/ogham/tree/master/ogham-spring-boot-starter-email, and https://github.com/groupe-sii/ogham/tree/master/ogham-spring-boot-starter-sms
-
 | https://square.github.io/okhttp/[OkHttp]
 | https://github.com/freefair/okhttp-spring-boot
 
@@ -182,7 +155,7 @@ do as they were designed before this was clarified.
 | https://github.com/okta/okta-spring-boot
 
 | https://www.optaplanner.org/[OptaPlanner]
-| https://github.com/kiegroup/optaplanner/tree/master/optaplanner-spring-integration/optaplanner-spring-boot-starter
+| https://github.com/kiegroup/optaplanner/tree/master/optaplanner-integration/optaplanner-spring-boot-starter
 
 | https://orika-mapper.github.io/orika-docs/[Orika]
 | https://github.com/akihyro/orika-spring-boot-starter
@@ -192,9 +165,6 @@ do as they were designed before this was clarified.
 
 | https://picocli.info/[picocli]
 | https://github.com/remkop/picocli/tree/master/picocli-spring-boot-starter
-
-| https://www.quickfixj.org/[quickfixj]
-| https://github.com/gevoulga/spring-boot-quickfixj
 
 | https://www.rabbitmq.com/[RabbitMQ] (Advanced usage)
 | https://github.com/societe-generale/rabbitmq-advanced-spring-boot-starter
@@ -246,8 +216,5 @@ do as they were designed before this was clarified.
 
 | https://alexo.github.io/wro4j/[Wro4j]
 | https://github.com/michael-simons/wro4j-spring-boot-starter
-
-| https://github.com/knowm/XChange[XChange]
-| https://github.com/cassandre-tech/cassandre-trading-bot
 
 |===

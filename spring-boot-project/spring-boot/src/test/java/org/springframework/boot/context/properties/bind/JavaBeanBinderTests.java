@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import org.springframework.boot.context.properties.source.ConfigurationPropertyS
 import org.springframework.boot.context.properties.source.MockConfigurationPropertySource;
 import org.springframework.boot.convert.Delimiter;
 import org.springframework.core.ResolvableType;
-import org.springframework.core.convert.ConversionService;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -341,7 +340,7 @@ class JavaBeanBinderTests {
 
 	@Test
 	void bindToInstanceWhenNoDefaultConstructorShouldBind() {
-		Binder binder = new Binder(this.sources, null, (ConversionService) null, null, null,
+		Binder binder = new Binder(this.sources, null, null, null, null,
 				(bindable, isNestedConstructorBinding) -> null);
 		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
 		source.put("foo.value", "bar");
@@ -553,24 +552,6 @@ class JavaBeanBinderTests {
 		assertThat(bean.getAlpha()).isEqualTo(0);
 		assertThat(bean.getBeta()).isEqualTo(1);
 		assertThat(bean.getGamma()).isEqualTo(2);
-	}
-
-	@Test // gh-23007
-	void bindWhenBeanWithGetSetIsMethodsFoundUsesGetterThatMatchesSetter() {
-		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
-		source.put("test.names", "spring,boot");
-		this.sources.add(source);
-		JavaBeanWithGetSetIs bean = this.binder.bind("test", Bindable.of(JavaBeanWithGetSetIs.class)).get();
-		assertThat(bean.getNames()).containsExactly("spring", "boot");
-	}
-
-	@Test // gh-23007
-	void bindWhenBeanWithGetIsMethodsFoundDoesNotUseIsGetter() {
-		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
-		source.put("test.names", "spring,boot");
-		this.sources.add(source);
-		JavaBeanWithGetIs bean = this.binder.bind("test", Bindable.of(JavaBeanWithGetIs.class)).get();
-		assertThat(bean.getNames()).containsExactly("spring", "boot");
 	}
 
 	static class ExampleValueBean {
@@ -1065,38 +1046,6 @@ class JavaBeanBinderTests {
 
 		void setProperty(String property) {
 			this.property = property;
-		}
-
-	}
-
-	static class JavaBeanWithGetSetIs {
-
-		private List<String> names = new ArrayList<>();
-
-		List<String> getNames() {
-			return this.names;
-		}
-
-		void setNames(List<String> names) {
-			this.names = names;
-		}
-
-		boolean isNames() {
-			return !this.names.isEmpty();
-		}
-
-	}
-
-	static class JavaBeanWithGetIs {
-
-		private List<String> names = new ArrayList<>();
-
-		boolean isNames() {
-			return !this.names.isEmpty();
-		}
-
-		List<String> getNames() {
-			return this.names;
 		}
 
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,10 @@ import java.time.Duration;
 import java.util.Collections;
 
 import com.samskivert.mustache.Mustache;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import reactor.test.StepVerifier;
 
-import org.springframework.context.support.StaticApplicationContext;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -41,20 +41,27 @@ class MustacheViewTests {
 	private final String templateUrl = "classpath:/" + getClass().getPackage().getName().replace(".", "/")
 			+ "/template.html";
 
-	private final StaticApplicationContext context = new StaticApplicationContext();
+	private GenericApplicationContext context = new GenericApplicationContext();
+
+	private MockServerWebExchange exchange;
+
+	@BeforeEach
+	void init() {
+		this.context.refresh();
+	}
 
 	@Test
 	void viewResolvesHandlebars() {
-		MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/test").build());
+		this.exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/test").build());
 		MustacheView view = new MustacheView();
 		view.setCompiler(Mustache.compiler());
 		view.setUrl(this.templateUrl);
 		view.setCharset(StandardCharsets.UTF_8.displayName());
 		view.setApplicationContext(this.context);
-		view.render(Collections.singletonMap("World", "Spring"), MediaType.TEXT_HTML, exchange)
+		view.render(Collections.singletonMap("World", "Spring"), MediaType.TEXT_HTML, this.exchange)
 				.block(Duration.ofSeconds(30));
-		StepVerifier.create(exchange.getResponse().getBodyAsString())
-				.assertNext((body) -> assertThat(body).isEqualToIgnoringWhitespace("Hello Spring")).verifyComplete();
+		assertThat(this.exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(30)).trim())
+				.isEqualTo("Hello Spring");
 	}
 
 }

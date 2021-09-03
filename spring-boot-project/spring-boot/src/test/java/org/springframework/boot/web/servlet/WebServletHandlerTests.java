@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,8 +50,8 @@ class WebServletHandlerTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void defaultServletConfiguration() throws IOException {
-		AnnotatedBeanDefinition servletDefinition = createBeanDefinition(DefaultConfigurationServlet.class);
-		this.handler.handle(servletDefinition, this.registry);
+		AnnotatedBeanDefinition servletdefinition = createBeanDefinition(DefaultConfigurationServlet.class);
+		this.handler.handle(servletdefinition, this.registry);
 		BeanDefinition servletRegistrationBean = this.registry
 				.getBeanDefinition(DefaultConfigurationServlet.class.getName());
 		MutablePropertyValues propertyValues = servletRegistrationBean.getPropertyValues();
@@ -60,7 +60,7 @@ class WebServletHandlerTests {
 		assertThat((Integer) propertyValues.get("loadOnStartup")).isEqualTo(-1);
 		assertThat(propertyValues.get("name")).isEqualTo(DefaultConfigurationServlet.class.getName());
 		assertThat((String[]) propertyValues.get("urlMappings")).isEmpty();
-		assertThat(propertyValues.get("servlet")).isEqualTo(servletDefinition);
+		assertThat(propertyValues.get("servlet")).isEqualTo(servletdefinition);
 	}
 
 	@Test
@@ -103,7 +103,7 @@ class WebServletHandlerTests {
 	}
 
 	@Test
-	void urlPatternsDeclaredTwice() {
+	void urlPatternsDeclaredTwice() throws IOException {
 		assertThatIllegalStateException()
 				.isThrownBy(() -> handleBeanDefinitionForClass(UrlPatternsDeclaredTwiceServlet.class))
 				.withMessageContaining("The urlPatterns and value attributes are mutually exclusive.");

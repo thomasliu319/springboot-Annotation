@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
@@ -65,7 +66,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.ClassUtils;
@@ -126,7 +126,7 @@ class WebEndpointTestInvocationContextProvider implements TestTemplateInvocation
 	static class WebEndpointsInvocationContext
 			implements TestTemplateInvocationContext, BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
-		private static final Duration TIMEOUT = Duration.ofMinutes(5);
+		private static final Duration TIMEOUT = Duration.ofMinutes(6);
 
 		private final String name;
 
@@ -160,13 +160,15 @@ class WebEndpointTestInvocationContextProvider implements TestTemplateInvocation
 		}
 
 		@Override
-		public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+		public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+				throws ParameterResolutionException {
 			Class<?> type = parameterContext.getParameter().getType();
 			return type.equals(WebTestClient.class) || type.isAssignableFrom(ConfigurableApplicationContext.class);
 		}
 
 		@Override
-		public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+		public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+				throws ParameterResolutionException {
 			Class<?> type = parameterContext.getParameter().getType();
 			if (type.equals(WebTestClient.class)) {
 				return createWebTestClient();
@@ -191,12 +193,7 @@ class WebEndpointTestInvocationContextProvider implements TestTemplateInvocation
 					"http://localhost:" + determinePort());
 			uriBuilderFactory.setEncodingMode(EncodingMode.NONE);
 			return WebTestClient.bindToServer().uriBuilderFactory(uriBuilderFactory).responseTimeout(TIMEOUT)
-					.codecs((codecs) -> codecs.defaultCodecs().maxInMemorySize(-1)).filter((request, next) -> {
-						if (HttpMethod.GET == request.method()) {
-							return next.exchange(request).retry(10);
-						}
-						return next.exchange(request);
-					}).build();
+					.codecs((codecs) -> codecs.defaultCodecs().maxInMemorySize(-1)).build();
 		}
 
 		private int determinePort() {

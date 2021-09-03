@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,21 +56,19 @@ public class TestProject {
 	 * Contains copies of the original source so we can modify it safely to test
 	 * incremental builds.
 	 */
-	private File sourceDirectory;
+	private File sourceFolder;
 
 	private TestCompiler compiler;
 
 	private Set<File> sourceFiles = new LinkedHashSet<>();
 
-	public TestProject(File tempDirectory, Class<?>... classes) throws IOException {
-		this.sourceDirectory = new File(tempDirectory, "src");
-		this.compiler = new TestCompiler(new File(tempDirectory, "build")) {
-
+	public TestProject(File tempFolder, Class<?>... classes) throws IOException {
+		this.sourceFolder = new File(tempFolder, "src");
+		this.compiler = new TestCompiler(new File(tempFolder, "build")) {
 			@Override
-			protected File getSourceDirectory() {
-				return TestProject.this.sourceDirectory;
+			protected File getSourceFolder() {
+				return TestProject.this.sourceFolder;
 			}
-
 		};
 		Set<Class<?>> contents = new HashSet<>(Arrays.asList(classes));
 		contents.addAll(Arrays.asList(ALWAYS_INCLUDE));
@@ -92,14 +90,14 @@ public class TestProject {
 	}
 
 	public File getSourceFile(Class<?> type) {
-		return new File(this.sourceDirectory, TestCompiler.sourcePathFor(type));
+		return new File(this.sourceFolder, TestCompiler.sourcePathFor(type));
 	}
 
 	public ConfigurationMetadata fullBuild() {
 		TestConfigurationMetadataAnnotationProcessor processor = new TestConfigurationMetadataAnnotationProcessor(
 				this.compiler.getOutputLocation());
 		TestCompilationTask task = this.compiler.getTask(this.sourceFiles);
-		deleteDirectoryContents(this.compiler.getOutputLocation());
+		deleteFolderContents(this.compiler.getOutputLocation());
 		task.call(processor);
 		return processor.getMetadata();
 	}
@@ -112,13 +110,13 @@ public class TestProject {
 		return processor.getMetadata();
 	}
 
-	private void deleteDirectoryContents(File outputDirectory) {
-		FileSystemUtils.deleteRecursively(outputDirectory);
-		outputDirectory.mkdirs();
+	private void deleteFolderContents(File outputFolder) {
+		FileSystemUtils.deleteRecursively(outputFolder);
+		outputFolder.mkdirs();
 	}
 
 	/**
-	 * Retrieve File relative to project's output directory.
+	 * Retrieve File relative to project's output folder.
 	 * @param relativePath the relative path
 	 * @return the output file
 	 */
@@ -185,7 +183,7 @@ public class TestProject {
 	 * code.
 	 */
 	private File getOriginalSourceFile(Class<?> type) {
-		return new File(TestCompiler.SOURCE_DIRECTORY, TestCompiler.sourcePathFor(type));
+		return new File(TestCompiler.SOURCE_FOLDER, TestCompiler.sourcePathFor(type));
 	}
 
 	private static void putContents(File targetFile, String contents) throws IOException {

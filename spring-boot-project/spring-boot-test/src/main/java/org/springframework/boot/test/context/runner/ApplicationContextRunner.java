@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,34 +55,26 @@ public class ApplicationContextRunner extends
 	 * @param contextFactory a supplier that returns a new instance on each call
 	 */
 	public ApplicationContextRunner(Supplier<ConfigurableApplicationContext> contextFactory) {
-		super(contextFactory, ApplicationContextRunner::new);
+		super(contextFactory);
 	}
 
-	private ApplicationContextRunner(RunnerConfiguration<ConfigurableApplicationContext> runnerConfiguration) {
-		super(runnerConfiguration, ApplicationContextRunner::new);
-	}
-
-	@Deprecated
 	private ApplicationContextRunner(Supplier<ConfigurableApplicationContext> contextFactory,
-			boolean allowBeanDefinitionOverriding,
 			List<ApplicationContextInitializer<? super ConfigurableApplicationContext>> initializers,
 			TestPropertyValues environmentProperties, TestPropertyValues systemProperties, ClassLoader classLoader,
 			ApplicationContext parent, List<BeanRegistration<?>> beanRegistrations,
 			List<Configurations> configurations) {
-		super(contextFactory, allowBeanDefinitionOverriding, initializers, environmentProperties, systemProperties,
-				classLoader, parent, beanRegistrations, configurations);
+		super(contextFactory, initializers, environmentProperties, systemProperties, classLoader, parent,
+				beanRegistrations, configurations);
 	}
 
 	@Override
-	@Deprecated
 	protected ApplicationContextRunner newInstance(Supplier<ConfigurableApplicationContext> contextFactory,
-			boolean allowBeanDefinitionOverriding,
 			List<ApplicationContextInitializer<? super ConfigurableApplicationContext>> initializers,
 			TestPropertyValues environmentProperties, TestPropertyValues systemProperties, ClassLoader classLoader,
 			ApplicationContext parent, List<BeanRegistration<?>> beanRegistrations,
 			List<Configurations> configurations) {
-		return new ApplicationContextRunner(contextFactory, allowBeanDefinitionOverriding, initializers,
-				environmentProperties, systemProperties, classLoader, parent, beanRegistrations, configurations);
+		return new ApplicationContextRunner(contextFactory, initializers, environmentProperties, systemProperties,
+				classLoader, parent, beanRegistrations, configurations);
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.security.ProtectionDomain;
 import java.util.Enumeration;
 
 import org.apache.commons.logging.Log;
@@ -142,7 +141,7 @@ public class RestartClassLoader extends URLClassLoader implements SmartClassLoad
 					loadedClass = findClass(name);
 				}
 				catch (ClassNotFoundException ex) {
-					loadedClass = Class.forName(name, false, getParent());
+					loadedClass = getParent().loadClass(name);
 				}
 			}
 			if (resolve) {
@@ -166,16 +165,6 @@ public class RestartClassLoader extends URLClassLoader implements SmartClassLoad
 			byte[] bytes = file.getContents();
 			return defineClass(name, bytes, 0, bytes.length);
 		});
-	}
-
-	@Override
-	public Class<?> publicDefineClass(String name, byte[] b, ProtectionDomain protectionDomain) {
-		return defineClass(name, b, 0, b.length, protectionDomain);
-	}
-
-	@Override
-	public ClassLoader getOriginalClassLoader() {
-		return getParent();
 	}
 
 	private URL createFileUrl(String name, ClassLoaderFile file) {

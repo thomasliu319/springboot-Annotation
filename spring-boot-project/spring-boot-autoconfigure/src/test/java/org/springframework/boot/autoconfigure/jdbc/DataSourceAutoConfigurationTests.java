@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,6 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.r2dbc.spi.ConnectionFactory;
-import oracle.ucp.jdbc.PoolDataSourceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.jupiter.api.Test;
 
@@ -43,8 +41,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.jdbc.DatabaseDriver;
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
-import org.springframework.boot.jdbc.init.DataSourceScriptDatabaseInitializer;
-import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -68,7 +64,8 @@ class DataSourceAutoConfigurationTests {
 
 	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(DataSourceAutoConfiguration.class))
-			.withPropertyValues("spring.datasource.url:jdbc:hsqldb:mem:testdb-" + new Random().nextInt());
+			.withPropertyValues("spring.datasource.initialization-mode=never",
+					"spring.datasource.url:jdbc:hsqldb:mem:testdb-" + new Random().nextInt());
 
 	@Test
 	void testDefaultDataSourceExists() {
@@ -96,12 +93,6 @@ class DataSourceAutoConfigurationTests {
 		this.contextRunner.withPropertyValues("spring.datasource.driverClassName:org.none.jdbcDriver")
 				.run((context) -> assertThat(context).getFailure().isInstanceOf(BeanCreationException.class)
 						.hasMessageContaining("org.none.jdbcDriver"));
-	}
-
-	@Test
-	void datasourceWhenConnectionFactoryPresentIsNotAutoConfigured() {
-		this.contextRunner.withBean(ConnectionFactory.class, () -> mock(ConnectionFactory.class))
-				.run((context) -> assertThat(context).doesNotHaveBean(DataSource.class));
 	}
 
 	@Test
@@ -137,25 +128,8 @@ class DataSourceAutoConfigurationTests {
 		assertDataSource(org.apache.commons.dbcp2.BasicDataSource.class,
 				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat"), (dataSource) -> {
 					assertThat(dataSource.getTestOnBorrow()).isTrue();
-					// Use Connection#isValid()
-					assertThat(dataSource.getValidationQuery()).isNull();
-				});
-	}
-
-	@Test
-	void oracleUcpIsFallback() {
-		assertDataSource(PoolDataSourceImpl.class,
-				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat", "org.apache.commons.dbcp2"),
-				(dataSource) -> assertThat(dataSource.getURL()).startsWith("jdbc:hsqldb:mem:testdb"));
-	}
-
-	@Test
-	void oracleUcpValidatesConnectionByDefault() {
-		assertDataSource(PoolDataSourceImpl.class,
-				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat", "org.apache.commons.dbcp2"), (dataSource) -> {
-					assertThat(dataSource.getValidateConnectionOnBorrow()).isTrue();
-					// Use an internal ping when using an Oracle JDBC driver
-					assertThat(dataSource.getSQLForValidateConnection()).isNull();
+					assertThat(dataSource.getValidationQuery()).isNull(); // Use
+																			// Connection#isValid()
 				});
 	}
 
@@ -174,7 +148,6 @@ class DataSourceAutoConfigurationTests {
 	@Test
 	void dataSourceWhenNoConnectionPoolsAreAvailableWithUrlDoesNotCreateDataSource() {
 		this.contextRunner.with(hideConnectionPools())
-				.withPropertyValues("spring.datasource.url:jdbc:hsqldb:mem:testdb")
 				.run((context) -> assertThat(context).doesNotHaveBean(DataSource.class));
 	}
 
@@ -236,24 +209,16 @@ class DataSourceAutoConfigurationTests {
 	}
 
 	@Test
-	@Deprecated
 	void testDataSourceIsInitializedEarly() {
 		this.contextRunner.withUserConfiguration(TestInitializedDataSourceConfiguration.class)
-				.withPropertyValues("spring.datasource.initialization-mode=always").run((context) -> {
-					assertThat(context).hasSingleBean(DataSourceScriptDatabaseInitializer.class);
-					assertThat(context.getBean(TestInitializedDataSourceConfiguration.class).called).isTrue();
-				});
-	}
-
-	@Test
-	void whenNoInitializationRelatedSpringDataSourcePropertiesAreConfiguredThenInitializationBacksOff() {
-		this.contextRunner
-				.run((context) -> assertThat(context).doesNotHaveBean(DataSourceScriptDatabaseInitializer.class));
+				.withPropertyValues("spring.datasource.initialization-mode=always")
+				.run((context) -> assertThat(context.getBean(TestInitializedDataSourceConfiguration.class).called)
+						.isTrue());
 	}
 
 	private static Function<ApplicationContextRunner, ApplicationContextRunner> hideConnectionPools() {
 		return (runner) -> runner.withClassLoader(new FilteredClassLoader("org.apache.tomcat", "com.zaxxer.hikari",
-				"org.apache.commons.dbcp2", "oracle.ucp.jdbc"));
+				"org.apache.commons.dbcp", "org.apache.commons.dbcp2"));
 	}
 
 	private <T extends DataSource> void assertDataSource(Class<T> expectedType, List<String> hiddenPackages,
@@ -283,7 +248,6 @@ class DataSourceAutoConfigurationTests {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@DependsOnDatabaseInitialization
 	static class TestInitializedDataSourceConfiguration {
 
 		private boolean called;

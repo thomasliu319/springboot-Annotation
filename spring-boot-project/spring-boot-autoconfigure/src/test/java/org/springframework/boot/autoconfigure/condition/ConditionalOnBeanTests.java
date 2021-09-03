@@ -149,8 +149,8 @@ class ConditionalOnBeanTests {
 
 	@Test
 	void conditionEvaluationConsidersChangeInTypeWhenBeanIsOverridden() {
-		this.contextRunner.withAllowBeanDefinitionOverriding(true).withUserConfiguration(OriginalDefinition.class,
-				OverridingDefinition.class, ConsumingConfiguration.class).run((context) -> {
+		this.contextRunner.withUserConfiguration(OriginalDefinition.class, OverridingDefinition.class,
+				ConsumingConfiguration.class).run((context) -> {
 					assertThat(context).hasBean("testBean");
 					assertThat(context).hasSingleBean(Integer.class);
 					assertThat(context).doesNotHaveBean(ConsumingConfiguration.class);

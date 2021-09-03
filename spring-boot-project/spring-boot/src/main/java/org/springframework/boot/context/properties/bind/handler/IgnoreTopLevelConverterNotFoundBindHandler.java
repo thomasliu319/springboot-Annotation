@@ -44,7 +44,6 @@ public class IgnoreTopLevelConverterNotFoundBindHandler extends AbstractBindHand
 	 * @param parent the parent handler
 	 */
 	public IgnoreTopLevelConverterNotFoundBindHandler(BindHandler parent) {
-		super(parent);
 	}
 
 	@Override

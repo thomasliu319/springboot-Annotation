@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,9 +55,10 @@ class SampleSecureWebFluxCustomSecurityTests {
 	}
 
 	@Test
-	void healthDoesNotRequireAuthentication() {
+	void healthAndInfoDoNotRequireAuthentication() {
 		this.webClient.get().uri("/actuator/health").accept(MediaType.APPLICATION_JSON).exchange().expectStatus()
 				.isOk();
+		this.webClient.get().uri("/actuator/info").accept(MediaType.APPLICATION_JSON).exchange().expectStatus().isOk();
 	}
 
 	@Test
@@ -114,9 +115,9 @@ class SampleSecureWebFluxCustomSecurityTests {
 		}
 
 		@Bean
-		SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+		SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) throws Exception {
 			http.authorizeExchange((exchanges) -> {
-				exchanges.matchers(EndpointRequest.to("health")).permitAll();
+				exchanges.matchers(EndpointRequest.to("health", "info")).permitAll();
 				exchanges.matchers(EndpointRequest.toAnyEndpoint().excluding(MappingsEndpoint.class))
 						.hasRole("ACTUATOR");
 				exchanges.matchers(PathRequest.toStaticResources().atCommonLocations()).permitAll();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.boot.configurationprocessor.fieldvalues.javac;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -39,21 +38,10 @@ final class Trees extends ReflectionWrapper {
 	}
 
 	static Trees instance(ProcessingEnvironment env) throws Exception {
-		try {
-			ClassLoader classLoader = env.getClass().getClassLoader();
-			Class<?> type = findClass(classLoader, "com.sun.source.util.Trees");
-			Method method = findMethod(type, "instance", ProcessingEnvironment.class);
-			return new Trees(method.invoke(null, env));
-		}
-		catch (Exception ex) {
-			return instance(unwrap(env));
-		}
-	}
-
-	private static ProcessingEnvironment unwrap(ProcessingEnvironment wrapper) throws Exception {
-		Field delegateField = wrapper.getClass().getDeclaredField("delegate");
-		delegateField.setAccessible(true);
-		return (ProcessingEnvironment) delegateField.get(wrapper);
+		ClassLoader classLoader = env.getClass().getClassLoader();
+		Class<?> type = findClass(classLoader, "com.sun.source.util.Trees");
+		Method method = findMethod(type, "instance", ProcessingEnvironment.class);
+		return new Trees(method.invoke(null, env));
 	}
 
 }

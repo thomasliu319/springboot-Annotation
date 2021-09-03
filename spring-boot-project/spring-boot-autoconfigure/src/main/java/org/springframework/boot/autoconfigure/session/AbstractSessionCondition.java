@@ -58,8 +58,7 @@ abstract class AbstractSessionCondition extends SpringBootCondition {
 			return binder.bind("spring.session.store-type", StoreType.class)
 					.map((t) -> new ConditionOutcome(t == required,
 							message.found("spring.session.store-type property").items(t)))
-					.orElseGet(() -> ConditionOutcome
-							.noMatch(message.didNotFind("spring.session.store-type property").atAll()));
+					.orElse(ConditionOutcome.noMatch(message.didNotFind("spring.session.store-type property").atAll()));
 		}
 		catch (BindException ex) {
 			return ConditionOutcome.noMatch(message.found("invalid spring.session.store-type property").atAll());

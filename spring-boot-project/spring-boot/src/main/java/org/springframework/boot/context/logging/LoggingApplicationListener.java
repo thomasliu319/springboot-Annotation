@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,6 +136,13 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	 */
 	public static final String LOGGER_GROUPS_BEAN_NAME = "springBootLoggerGroups";
 
+	/**
+	 * The name of the {@link LogFile} bean.
+	 * @deprecated since 2.2.0 in favor of {@link #LOG_FILE_BEAN_NAME}
+	 */
+	@Deprecated
+	public static final String LOGFILE_BEAN_NAME = LOG_FILE_BEAN_NAME;
+
 	private static final Map<String, List<String>> DEFAULT_GROUP_LOGGERS;
 	static {
 		MultiValueMap<String, String> loggers = new LinkedMultiValueMap<>();
@@ -170,7 +177,7 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 
 	private static final Class<?>[] SOURCE_TYPES = { SpringApplication.class, ApplicationContext.class };
 
-	private static final AtomicBoolean shutdownHookRegistered = new AtomicBoolean();
+	private static final AtomicBoolean shutdownHookRegistered = new AtomicBoolean(false);
 
 	private final Log logger = LogFactory.getLog(getClass());
 
@@ -233,11 +240,10 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	}
 
 	private void onApplicationEnvironmentPreparedEvent(ApplicationEnvironmentPreparedEvent event) {
-		SpringApplication springApplication = event.getSpringApplication();
 		if (this.loggingSystem == null) {
-			this.loggingSystem = LoggingSystem.get(springApplication.getClassLoader());
+			this.loggingSystem = LoggingSystem.get(event.getSpringApplication().getClassLoader());
 		}
-		initialize(event.getEnvironment(), springApplication.getClassLoader());
+		initialize(event.getEnvironment(), event.getSpringApplication().getClassLoader());
 	}
 
 	private void onApplicationPreparedEvent(ApplicationPreparedEvent event) {
@@ -272,7 +278,7 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	 * @param classLoader the classloader
 	 */
 	protected void initialize(ConfigurableEnvironment environment, ClassLoader classLoader) {
-		getLoggingSystemProperties(environment).apply();
+		new LoggingSystemProperties(environment).apply();
 		this.logFile = LogFile.get(environment);
 		if (this.logFile != null) {
 			this.logFile.applyToSystemProperties();
@@ -282,11 +288,6 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 		initializeSystem(environment, this.loggingSystem, this.logFile);
 		initializeFinalLoggingLevels(environment, this.loggingSystem);
 		registerShutdownHookIfNecessary(environment, this.loggingSystem);
-	}
-
-	private LoggingSystemProperties getLoggingSystemProperties(ConfigurableEnvironment environment) {
-		return (this.loggingSystem != null) ? this.loggingSystem.getSystemProperties(environment)
-				: new LoggingSystemProperties(environment);
 	}
 
 	private void initializeEarlyLoggingLevel(ConfigurableEnvironment environment) {
@@ -306,26 +307,26 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	}
 
 	private void initializeSystem(ConfigurableEnvironment environment, LoggingSystem system, LogFile logFile) {
-		String logConfig = StringUtils.trimWhitespace(environment.getProperty(CONFIG_PROPERTY));
-		try {
-			LoggingInitializationContext initializationContext = new LoggingInitializationContext(environment);
-			if (ignoreLogConfig(logConfig)) {
-				system.initialize(initializationContext, null, logFile);
-			}
-			else {
+		LoggingInitializationContext initializationContext = new LoggingInitializationContext(environment);
+		String logConfig = environment.getProperty(CONFIG_PROPERTY);
+		if (ignoreLogConfig(logConfig)) {
+			system.initialize(initializationContext, null, logFile);
+		}
+		else {
+			try {
 				system.initialize(initializationContext, logConfig, logFile);
 			}
-		}
-		catch (Exception ex) {
-			Throwable exceptionToReport = ex;
-			while (exceptionToReport != null && !(exceptionToReport instanceof FileNotFoundException)) {
-				exceptionToReport = exceptionToReport.getCause();
+			catch (Exception ex) {
+				Throwable exceptionToReport = ex;
+				while (exceptionToReport != null && !(exceptionToReport instanceof FileNotFoundException)) {
+					exceptionToReport = exceptionToReport.getCause();
+				}
+				exceptionToReport = (exceptionToReport != null) ? exceptionToReport : ex;
+				// NOTE: We can't use the logger here to report the problem
+				System.err.println("Logging system failed to initialize using configuration from '" + logConfig + "'");
+				exceptionToReport.printStackTrace(System.err);
+				throw new IllegalStateException(ex);
 			}
-			exceptionToReport = (exceptionToReport != null) ? exceptionToReport : ex;
-			// NOTE: We can't use the logger here to report the problem
-			System.err.println("Logging system failed to initialize using configuration from '" + logConfig + "'");
-			exceptionToReport.printStackTrace(System.err);
-			throw new IllegalStateException(ex);
 		}
 	}
 
@@ -336,7 +337,7 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	private void initializeFinalLoggingLevels(ConfigurableEnvironment environment, LoggingSystem system) {
 		bindLoggerGroups(environment);
 		if (this.springBootLogging != null) {
-			initializeSpringBootLogging(system, this.springBootLogging);
+			initializeLogLevel(system, this.springBootLogging);
 		}
 		setLogLevels(system, environment);
 	}
@@ -346,6 +347,19 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 			Binder binder = Binder.get(environment);
 			binder.bind(LOGGING_GROUP, STRING_STRINGS_MAP).ifBound(this.loggerGroups::putAll);
 		}
+	}
+
+	/**
+	 * Initialize loggers based on the {@link #setSpringBootLogging(LogLevel)
+	 * springBootLogging} setting.
+	 * @param system the logging system
+	 * @param springBootLogging the spring boot logging level requested
+	 * @deprecated since 2.2.0 in favor of
+	 * {@link #initializeSpringBootLogging(LoggingSystem, LogLevel)}
+	 */
+	@Deprecated
+	protected void initializeLogLevel(LoggingSystem system, LogLevel springBootLogging) {
+		initializeSpringBootLogging(system, springBootLogging);
 	}
 
 	/**
@@ -360,6 +374,20 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 		BiConsumer<String, LogLevel> configurer = getLogLevelConfigurer(system);
 		SPRING_BOOT_LOGGING_LOGGERS.getOrDefault(springBootLogging, Collections.emptyList())
 				.forEach((name) -> configureLogLevel(name, springBootLogging, configurer));
+	}
+
+	/**
+	 * Set logging levels based on relevant {@link Environment} properties.
+	 * @param system the logging system
+	 * @param environment the environment
+	 * @deprecated since 2.2.0 in favor of
+	 * {@link #setLogLevels(LoggingSystem, ConfigurableEnvironment)}
+	 */
+	@Deprecated
+	protected void setLogLevels(LoggingSystem system, Environment environment) {
+		if (environment instanceof ConfigurableEnvironment) {
+			setLogLevels(system, (ConfigurableEnvironment) environment);
+		}
 	}
 
 	/**
@@ -399,16 +427,17 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 	}
 
 	private void registerShutdownHookIfNecessary(Environment environment, LoggingSystem loggingSystem) {
-		if (environment.getProperty(REGISTER_SHUTDOWN_HOOK_PROPERTY, Boolean.class, true)) {
+		boolean registerShutdownHook = environment.getProperty(REGISTER_SHUTDOWN_HOOK_PROPERTY, Boolean.class, false);
+		if (registerShutdownHook) {
 			Runnable shutdownHandler = loggingSystem.getShutdownHandler();
 			if (shutdownHandler != null && shutdownHookRegistered.compareAndSet(false, true)) {
-				registerShutdownHook(shutdownHandler);
+				registerShutdownHook(new Thread(shutdownHandler));
 			}
 		}
 	}
 
-	void registerShutdownHook(Runnable shutdownHandler) {
-		SpringApplication.getShutdownHandlers().add(shutdownHandler);
+	void registerShutdownHook(Thread shutdownHook) {
+		Runtime.getRuntime().addShutdownHook(shutdownHook);
 	}
 
 	public void setOrder(int order) {

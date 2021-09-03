@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.time.Duration;
 
 import io.micrometer.statsd.StatsdConfig;
 import io.micrometer.statsd.StatsdFlavor;
-import io.micrometer.statsd.StatsdProtocol;
 
 import org.springframework.boot.actuate.autoconfigure.metrics.export.properties.PropertiesConfigAdapter;
 
@@ -42,11 +41,6 @@ public class StatsdPropertiesConfigAdapter extends PropertiesConfigAdapter<Stats
 	}
 
 	@Override
-	public String prefix() {
-		return "management.metrics.export.statsd";
-	}
-
-	@Override
 	public StatsdFlavor flavor() {
 		return get(StatsdProperties::getFlavor, StatsdConfig.super::flavor);
 	}
@@ -64,11 +58,6 @@ public class StatsdPropertiesConfigAdapter extends PropertiesConfigAdapter<Stats
 	@Override
 	public int port() {
 		return get(StatsdProperties::getPort, StatsdConfig.super::port);
-	}
-
-	@Override
-	public StatsdProtocol protocol() {
-		return get(StatsdProperties::getProtocol, StatsdConfig.super::protocol);
 	}
 
 	@Override

@@ -114,8 +114,10 @@ public class ErrorPage {
 		}
 		if (obj instanceof ErrorPage) {
 			ErrorPage other = (ErrorPage) obj;
-			return ObjectUtils.nullSafeEquals(getExceptionName(), other.getExceptionName())
-					&& ObjectUtils.nullSafeEquals(this.path, other.path) && this.status == other.status;
+			boolean rtn = ObjectUtils.nullSafeEquals(getExceptionName(), other.getExceptionName());
+			rtn = rtn && ObjectUtils.nullSafeEquals(this.path, other.path);
+			rtn = rtn && this.status == other.status;
+			return rtn;
 		}
 		return false;
 	}
@@ -126,7 +128,7 @@ public class ErrorPage {
 		int result = 1;
 		result = prime * result + ObjectUtils.nullSafeHashCode(getExceptionName());
 		result = prime * result + ObjectUtils.nullSafeHashCode(this.path);
-		result = prime * result + getStatusCode();
+		result = prime * result + this.getStatusCode();
 		return result;
 	}
 

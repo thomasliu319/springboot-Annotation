@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
  */
 
 package org.springframework.boot.devtools.restart;
-
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 import org.junit.jupiter.api.Test;
 
@@ -86,17 +82,8 @@ class DefaultRestartInitializerTests {
 	}
 
 	@Test
-	void urlsCanBeRetrieved() throws IOException {
-		Thread thread = Thread.currentThread();
-		ClassLoader classLoader = thread.getContextClassLoader();
-		try (URLClassLoader contextClassLoader = new URLClassLoader(
-				new URL[] { new URL("file:test-app/build/classes/main/") }, classLoader)) {
-			thread.setContextClassLoader(contextClassLoader);
-			assertThat(new DefaultRestartInitializer().getUrls(thread)).isNotEmpty();
-		}
-		finally {
-			thread.setContextClassLoader(classLoader);
-		}
+	void urlsCanBeRetrieved() {
+		assertThat(new DefaultRestartInitializer().getUrls(Thread.currentThread())).isNotEmpty();
 	}
 
 	protected void testSkippedStacks(String s) {

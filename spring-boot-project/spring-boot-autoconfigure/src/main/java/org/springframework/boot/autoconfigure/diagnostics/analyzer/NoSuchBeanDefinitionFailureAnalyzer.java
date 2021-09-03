@@ -222,7 +222,7 @@ class NoSuchBeanDefinitionFailureAnalyzer extends AbstractInjectionFailureAnalyz
 		return unsatisfiedDependencyException.getInjectionPoint();
 	}
 
-	private static class Source {
+	private class Source {
 
 		private final String className;
 
@@ -317,7 +317,7 @@ class NoSuchBeanDefinitionFailureAnalyzer extends AbstractInjectionFailureAnalyz
 
 	}
 
-	private static class AutoConfigurationResult {
+	private class AutoConfigurationResult {
 
 		private final MethodMetadata methodMetadata;
 

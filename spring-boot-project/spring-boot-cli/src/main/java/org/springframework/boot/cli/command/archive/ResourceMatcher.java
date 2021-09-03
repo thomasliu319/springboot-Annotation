@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,23 +66,23 @@ class ResourceMatcher {
 				matchedResources.add(new MatchedResource(root));
 			}
 			else {
-				matchedResources.addAll(findInDirectory(root));
+				matchedResources.addAll(findInFolder(root));
 			}
 		}
 		return matchedResources;
 	}
 
-	private List<MatchedResource> findInDirectory(File directory) throws IOException {
+	private List<MatchedResource> findInFolder(File folder) throws IOException {
 		List<MatchedResource> matchedResources = new ArrayList<>();
 
 		PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(
-				new DirectoryResourceLoader(directory));
+				new FolderResourceLoader(folder));
 
 		for (String include : this.includes) {
 			for (Resource candidate : resolver.getResources(include)) {
 				File file = candidate.getFile();
 				if (file.isFile()) {
-					MatchedResource matchedResource = new MatchedResource(directory, file);
+					MatchedResource matchedResource = new MatchedResource(folder, file);
 					if (!isExcluded(matchedResource)) {
 						matchedResources.add(matchedResource);
 					}
@@ -130,31 +130,31 @@ class ResourceMatcher {
 	}
 
 	/**
-	 * {@link ResourceLoader} to get load resource from a directory.
+	 * {@link ResourceLoader} to get load resource from a folder.
 	 */
-	private static class DirectoryResourceLoader extends DefaultResourceLoader {
+	private static class FolderResourceLoader extends DefaultResourceLoader {
 
-		private final File rootDirectory;
+		private final File rootFolder;
 
-		DirectoryResourceLoader(File root) throws MalformedURLException {
-			super(new DirectoryClassLoader(root));
-			this.rootDirectory = root;
+		FolderResourceLoader(File root) throws MalformedURLException {
+			super(new FolderClassLoader(root));
+			this.rootFolder = root;
 		}
 
 		@Override
 		protected Resource getResourceByPath(String path) {
-			return new FileSystemResource(new File(this.rootDirectory, path));
+			return new FileSystemResource(new File(this.rootFolder, path));
 		}
 
 	}
 
 	/**
-	 * {@link ClassLoader} backed by a directory.
+	 * {@link ClassLoader} backed by a folder.
 	 */
-	private static class DirectoryClassLoader extends URLClassLoader {
+	private static class FolderClassLoader extends URLClassLoader {
 
-		DirectoryClassLoader(File rootDirectory) throws MalformedURLException {
-			super(new URL[] { rootDirectory.toURI().toURL() });
+		FolderClassLoader(File rootFolder) throws MalformedURLException {
+			super(new URL[] { rootFolder.toURI().toURL() });
 		}
 
 		@Override
@@ -186,10 +186,9 @@ class ResourceMatcher {
 			this.root = this.name.endsWith(".jar");
 		}
 
-		private MatchedResource(File rootDirectory, File file) {
-			String filePath = file.getAbsolutePath();
-			String rootDirectoryPath = rootDirectory.getAbsolutePath();
-			this.name = StringUtils.cleanPath(filePath.substring(rootDirectoryPath.length() + 1));
+		private MatchedResource(File rootFolder, File file) {
+			this.name = StringUtils
+					.cleanPath(file.getAbsolutePath().substring(rootFolder.getAbsolutePath().length() + 1));
 			this.file = file;
 			this.root = false;
 		}

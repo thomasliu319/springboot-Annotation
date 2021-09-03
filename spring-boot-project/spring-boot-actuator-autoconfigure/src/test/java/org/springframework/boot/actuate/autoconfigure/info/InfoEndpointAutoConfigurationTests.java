@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,13 +36,14 @@ class InfoEndpointAutoConfigurationTests {
 
 	@Test
 	void runShouldHaveEndpointBean() {
-		this.contextRunner.withPropertyValues("management.endpoints.web.exposure.include=info")
+		this.contextRunner.withPropertyValues("management.endpoint.shutdown.enabled:true")
 				.run((context) -> assertThat(context).hasSingleBean(InfoEndpoint.class));
 	}
 
 	@Test
-	void runWhenNotExposedShouldNotHaveEndpointBean() {
-		this.contextRunner.run((context) -> assertThat(context).doesNotHaveBean(InfoEndpoint.class));
+	void runShouldHaveEndpointBeanEvenIfDefaultIsDisabled() {
+		this.contextRunner.withPropertyValues("management.endpoint.default.enabled:false")
+				.run((context) -> assertThat(context).hasSingleBean(InfoEndpoint.class));
 	}
 
 	@Test

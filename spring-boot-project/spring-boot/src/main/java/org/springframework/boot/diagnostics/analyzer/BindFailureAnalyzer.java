@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ import org.springframework.util.StringUtils;
  *
  * @author Andy Wilkinson
  * @author Madhura Bhave
- * @author Phillip Webb
  */
 class BindFailureAnalyzer extends AbstractFailureAnalyzer<BindException> {
 
@@ -69,33 +68,16 @@ class BindFailureAnalyzer extends AbstractFailureAnalyzer<BindException> {
 	}
 
 	private String getMessage(BindException cause) {
-		Throwable rootCause = getRootCause(cause.getCause());
 		ConversionFailedException conversionFailure = findCause(cause, ConversionFailedException.class);
 		if (conversionFailure != null) {
-			String message = "failed to convert " + conversionFailure.getSourceType() + " to "
+			return "failed to convert " + conversionFailure.getSourceType() + " to "
 					+ conversionFailure.getTargetType();
-			if (rootCause != null) {
-				message += " (caused by " + getExceptionTypeAndMessage(rootCause) + ")";
-			}
-			return message;
 		}
-		if (rootCause != null && StringUtils.hasText(rootCause.getMessage())) {
-			return getExceptionTypeAndMessage(rootCause);
+		Throwable failure = cause;
+		while (failure.getCause() != null) {
+			failure = failure.getCause();
 		}
-		return getExceptionTypeAndMessage(cause);
-	}
-
-	private Throwable getRootCause(Throwable cause) {
-		Throwable rootCause = cause;
-		while (rootCause != null && rootCause.getCause() != null) {
-			rootCause = rootCause.getCause();
-		}
-		return rootCause;
-	}
-
-	private String getExceptionTypeAndMessage(Throwable ex) {
-		String message = ex.getMessage();
-		return ex.getClass().getName() + (StringUtils.hasText(message) ? ": " + message : "");
+		return (StringUtils.hasText(failure.getMessage()) ? failure.getMessage() : cause.getMessage());
 	}
 
 	private FailureAnalysis getFailureAnalysis(Object description, BindException cause) {

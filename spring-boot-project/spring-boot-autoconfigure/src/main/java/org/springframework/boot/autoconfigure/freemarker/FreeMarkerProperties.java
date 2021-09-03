@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,12 +49,10 @@ public class FreeMarkerProperties extends AbstractTemplateViewResolverProperties
 	private String[] templateLoaderPath = new String[] { DEFAULT_TEMPLATE_LOADER_PATH };
 
 	/**
-	 * Whether to prefer file system access for template loading to enable hot detection
-	 * of template changes. When a template path is detected as a directory, templates are
-	 * loaded from the directory only and other matching classpath locations will not be
-	 * considered.
+	 * Whether to prefer file system access for template loading. File system access
+	 * enables hot detection of template changes.
 	 */
-	private boolean preferFileSystemAccess;
+	private boolean preferFileSystemAccess = true;
 
 	public FreeMarkerProperties() {
 		super(DEFAULT_PREFIX, DEFAULT_SUFFIX);

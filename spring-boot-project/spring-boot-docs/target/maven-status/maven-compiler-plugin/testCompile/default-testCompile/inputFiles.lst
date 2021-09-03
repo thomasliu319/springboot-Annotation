@@ -1,0 +1,17 @@
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/test/system/OutputCaptureTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/SampleApp.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/actuate/metrics/MetricsHealthMicrometerExportExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/context/EnvironmentPostProcessorExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/context/embedded/TomcatLegacyCookieProcessorExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jmx/SampleApp.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/SimpleDataSourceExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/SimpleTwoDataSourcesExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/web/client/SampleWebClientConfiguration.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/web/client/SampleWebClientTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/context/properties/bind/AppSystemPropertiesTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/ConfigurableDataSourceExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/builder/SpringApplicationBuilderExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/BasicDataSourceExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jdbc/CompleteTwoDataSourcesExampleTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/autoconfigure/UserServiceAutoConfigurationTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-docs/src/test/java/org/springframework/boot/docs/jmx/SampleJmxTests.java

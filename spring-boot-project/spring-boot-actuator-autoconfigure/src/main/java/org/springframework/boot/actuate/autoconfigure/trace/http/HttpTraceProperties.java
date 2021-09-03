@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,8 @@ public class HttpTraceProperties {
 
 	/**
 	 * Items to be included in the trace. Defaults to request headers (excluding
-	 * Authorization and Cookie), response headers (excluding Set-Cookie), and time taken.
+	 * Authorization but including Cookie), response headers (including Set-Cookie), and
+	 * time taken.
 	 */
 	private Set<Include> include = new HashSet<>(Include.defaultIncludes());
 

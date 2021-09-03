@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,11 +47,8 @@ class AetherGrapeEngineTests {
 
 	private final GroovyClassLoader groovyClassLoader = new GroovyClassLoader();
 
-	private final RepositoryConfiguration springMilestone = new RepositoryConfiguration("spring-milestone",
+	private final RepositoryConfiguration springMilestones = new RepositoryConfiguration("spring-milestones",
 			URI.create("https://repo.spring.io/milestone"), false);
-
-	private final RepositoryConfiguration springSnapshot = new RepositoryConfiguration("spring-snapshot",
-			URI.create("https://repo.spring.io/snapshot"), true);
 
 	private AetherGrapeEngine createGrapeEngine(RepositoryConfiguration... additionalRepositories) {
 		List<RepositoryConfiguration> repositoryConfigurations = new ArrayList<>();
@@ -67,7 +64,7 @@ class AetherGrapeEngineTests {
 	@Test
 	void dependencyResolution() {
 		Map<String, Object> args = new HashMap<>();
-		createGrapeEngine(this.springMilestone, this.springSnapshot).grab(args,
+		createGrapeEngine(this.springMilestones).grab(args,
 				createDependency("org.springframework", "spring-jdbc", null));
 		assertThat(this.groovyClassLoader.getURLs()).hasSize(5);
 	}
@@ -107,7 +104,7 @@ class AetherGrapeEngineTests {
 		Map<String, Object> args = new HashMap<>();
 		args.put("excludes", Arrays.asList(createExclusion("org.springframework", "spring-core")));
 
-		createGrapeEngine(this.springMilestone, this.springSnapshot).grab(args,
+		createGrapeEngine(this.springMilestones).grab(args,
 				createDependency("org.springframework", "spring-jdbc", "3.2.4.RELEASE"),
 				createDependency("org.springframework", "spring-beans", "3.2.4.RELEASE"));
 
@@ -129,7 +126,7 @@ class AetherGrapeEngineTests {
 		GroovyClassLoader customClassLoader = new GroovyClassLoader();
 		args.put("classLoader", customClassLoader);
 
-		createGrapeEngine(this.springMilestone, this.springSnapshot).grab(args,
+		createGrapeEngine(this.springMilestones).grab(args,
 				createDependency("org.springframework", "spring-jdbc", null));
 
 		assertThat(this.groovyClassLoader.getURLs()).isEmpty();
@@ -139,7 +136,7 @@ class AetherGrapeEngineTests {
 	@Test
 	void resolutionWithCustomResolver() {
 		Map<String, Object> args = new HashMap<>();
-		AetherGrapeEngine grapeEngine = createGrapeEngine();
+		AetherGrapeEngine grapeEngine = this.createGrapeEngine();
 		grapeEngine.addResolver(createResolver("spring-releases", "https://repo.spring.io/release"));
 		Map<String, Object> dependency = createDependency("io.spring.docresources", "spring-doc-resources",
 				"0.1.1.RELEASE");

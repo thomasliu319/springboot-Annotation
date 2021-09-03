@@ -159,6 +159,8 @@ public final class EndpointRequest {
 
 		private volatile ServerWebExchangeMatcher delegate;
 
+		private static ManagementPortType managementPortType;
+
 		private EndpointServerWebExchangeMatcher(boolean includeLinks) {
 			this(Collections.emptyList(), Collections.emptyList(), includeLinks);
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,9 +46,8 @@ import org.springframework.boot.autoconfigure.condition.SearchStrategy;
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition;
 import org.springframework.boot.autoconfigure.template.TemplateAvailabilityProvider;
 import org.springframework.boot.autoconfigure.template.TemplateAvailabilityProviders;
+import org.springframework.boot.autoconfigure.web.ResourceProperties;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.boot.autoconfigure.web.WebProperties;
-import org.springframework.boot.autoconfigure.web.WebProperties.Resources;
 import org.springframework.boot.autoconfigure.web.servlet.DispatcherServletPath;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcProperties;
@@ -81,7 +80,6 @@ import org.springframework.web.util.HtmlUtils;
  * @author Andy Wilkinson
  * @author Stephane Nicoll
  * @author Brian Clozel
- * @author Scott Frederick
  * @since 1.0.0
  */
 @Configuration(proxyBeanMethods = false)
@@ -89,7 +87,7 @@ import org.springframework.web.util.HtmlUtils;
 @ConditionalOnClass({ Servlet.class, DispatcherServlet.class })
 // Load before the main WebMvcAutoConfiguration so that the error View is available
 @AutoConfigureBefore(WebMvcAutoConfiguration.class)
-@EnableConfigurationProperties({ ServerProperties.class, WebMvcProperties.class })
+@EnableConfigurationProperties({ ServerProperties.class, ResourceProperties.class, WebMvcProperties.class })
 public class ErrorMvcAutoConfiguration {
 
 	private final ServerProperties serverProperties;
@@ -101,7 +99,7 @@ public class ErrorMvcAutoConfiguration {
 	@Bean
 	@ConditionalOnMissingBean(value = ErrorAttributes.class, search = SearchStrategy.CURRENT)
 	public DefaultErrorAttributes errorAttributes() {
-		return new DefaultErrorAttributes();
+		return new DefaultErrorAttributes(this.serverProperties.getError().isIncludeException());
 	}
 
 	@Bean
@@ -123,23 +121,23 @@ public class ErrorMvcAutoConfiguration {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@EnableConfigurationProperties({ WebProperties.class, WebMvcProperties.class })
 	static class DefaultErrorViewResolverConfiguration {
 
 		private final ApplicationContext applicationContext;
 
-		private final Resources resources;
+		private final ResourceProperties resourceProperties;
 
-		DefaultErrorViewResolverConfiguration(ApplicationContext applicationContext, WebProperties webProperties) {
+		DefaultErrorViewResolverConfiguration(ApplicationContext applicationContext,
+				ResourceProperties resourceProperties) {
 			this.applicationContext = applicationContext;
-			this.resources = webProperties.getResources();
+			this.resourceProperties = resourceProperties;
 		}
 
 		@Bean
 		@ConditionalOnBean(DispatcherServlet.class)
 		@ConditionalOnMissingBean(ErrorViewResolver.class)
 		DefaultErrorViewResolver conventionErrorViewResolver() {
-			return new DefaultErrorViewResolver(this.applicationContext, this.resources);
+			return new DefaultErrorViewResolver(this.applicationContext, this.resourceProperties);
 		}
 
 	}
@@ -253,7 +251,7 @@ public class ErrorMvcAutoConfiguration {
 	/**
 	 * {@link WebServerFactoryCustomizer} that configures the server's error pages.
 	 */
-	static class ErrorPageCustomizer implements ErrorPageRegistrar, Ordered {
+	private static class ErrorPageCustomizer implements ErrorPageRegistrar, Ordered {
 
 		private final ServerProperties properties;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,24 +27,26 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  */
 class H2ConsolePropertiesTests {
 
+	private H2ConsoleProperties properties;
+
 	@Test
 	void pathMustNotBeEmpty() {
-		H2ConsoleProperties properties = new H2ConsoleProperties();
-		assertThatIllegalArgumentException().isThrownBy(() -> properties.setPath(""))
+		this.properties = new H2ConsoleProperties();
+		assertThatIllegalArgumentException().isThrownBy(() -> this.properties.setPath(""))
 				.withMessageContaining("Path must have length greater than 1");
 	}
 
 	@Test
 	void pathMustHaveLengthGreaterThanOne() {
-		H2ConsoleProperties properties = new H2ConsoleProperties();
-		assertThatIllegalArgumentException().isThrownBy(() -> properties.setPath("/"))
+		this.properties = new H2ConsoleProperties();
+		assertThatIllegalArgumentException().isThrownBy(() -> this.properties.setPath("/"))
 				.withMessageContaining("Path must have length greater than 1");
 	}
 
 	@Test
 	void customPathMustBeginWithASlash() {
-		H2ConsoleProperties properties = new H2ConsoleProperties();
-		assertThatIllegalArgumentException().isThrownBy(() -> properties.setPath("custom"))
+		this.properties = new H2ConsoleProperties();
+		assertThatIllegalArgumentException().isThrownBy(() -> this.properties.setPath("custom"))
 				.withMessageContaining("Path must start with '/'");
 	}
 

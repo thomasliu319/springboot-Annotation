@@ -16,10 +16,10 @@
 
 package org.springframework.boot.test.mock.mockito;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -43,9 +43,8 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.ConstructorArgumentValues.ValueHolder;
-import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor;
+import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessorAdapter;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
-import org.springframework.beans.factory.config.SmartInstantiationAwareBeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
@@ -76,8 +75,8 @@ import org.springframework.util.StringUtils;
  * @author Andreas Neiser
  * @since 1.4.0
  */
-public class MockitoPostProcessor implements InstantiationAwareBeanPostProcessor, BeanClassLoaderAware,
-		BeanFactoryAware, BeanFactoryPostProcessor, Ordered {
+public class MockitoPostProcessor extends InstantiationAwareBeanPostProcessorAdapter
+		implements BeanClassLoaderAware, BeanFactoryAware, BeanFactoryPostProcessor, Ordered {
 
 	private static final String BEAN_NAME = MockitoPostProcessor.class.getName();
 
@@ -308,7 +307,7 @@ public class MockitoPostProcessor implements InstantiationAwareBeanPostProcessor
 				if (primaryBeanName != null) {
 					throw new NoUniqueBeanDefinitionException(type.resolve(), candidateBeanNames.size(),
 							"more than one 'primary' bean found among candidates: "
-									+ Collections.singletonList(candidateBeanNames));
+									+ Arrays.asList(candidateBeanNames));
 				}
 				primaryBeanName = candidateBeanName;
 			}
@@ -333,8 +332,8 @@ public class MockitoPostProcessor implements InstantiationAwareBeanPostProcessor
 	}
 
 	@Override
-	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName)
-			throws BeansException {
+	public PropertyValues postProcessPropertyValues(PropertyValues pvs, PropertyDescriptor[] pds, final Object bean,
+			String beanName) throws BeansException {
 		ReflectionUtils.doWithFields(bean.getClass(), (field) -> postProcessField(bean, field));
 		return pvs;
 	}
@@ -425,7 +424,7 @@ public class MockitoPostProcessor implements InstantiationAwareBeanPostProcessor
 	 * {@link BeanPostProcessor} to handle {@link SpyBean} definitions. Registered as a
 	 * separate processor so that it can be ordered above AOP post processors.
 	 */
-	static class SpyPostProcessor implements SmartInstantiationAwareBeanPostProcessor, PriorityOrdered {
+	static class SpyPostProcessor extends InstantiationAwareBeanPostProcessorAdapter implements PriorityOrdered {
 
 		private static final String BEAN_NAME = SpyPostProcessor.class.getName();
 

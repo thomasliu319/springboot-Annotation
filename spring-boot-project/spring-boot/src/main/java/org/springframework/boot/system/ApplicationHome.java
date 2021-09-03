@@ -96,10 +96,11 @@ public class ApplicationHome {
 			if (source != null && source.exists() && !isUnitTest()) {
 				return source.getAbsoluteFile();
 			}
+			return null;
 		}
 		catch (Exception ex) {
+			return null;
 		}
-		return null;
 	}
 
 	private boolean isUnitTest() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBean.BindMethod;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -49,11 +49,29 @@ public class ConfigurationPropertiesBindingPostProcessor
 	 */
 	public static final String BEAN_NAME = ConfigurationPropertiesBindingPostProcessor.class.getName();
 
+	/**
+	 * The bean name of the configuration properties validator.
+	 * @deprecated since 2.2.0 in favor of
+	 * {@link EnableConfigurationProperties#VALIDATOR_BEAN_NAME}
+	 */
+	@Deprecated
+	public static final String VALIDATOR_BEAN_NAME = EnableConfigurationProperties.VALIDATOR_BEAN_NAME;
+
 	private ApplicationContext applicationContext;
 
 	private BeanDefinitionRegistry registry;
 
 	private ConfigurationPropertiesBinder binder;
+
+	/**
+	 * Create a new {@link ConfigurationPropertiesBindingPostProcessor} instance.
+	 * @deprecated since 2.2.0 in favor of
+	 * {@link EnableConfigurationProperties @EnableConfigurationProperties} or
+	 * {@link ConfigurationPropertiesBindingPostProcessor#register(BeanDefinitionRegistry)}
+	 */
+	@Deprecated
+	public ConfigurationPropertiesBindingPostProcessor() {
+	}
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -107,10 +125,8 @@ public class ConfigurationPropertiesBindingPostProcessor
 	public static void register(BeanDefinitionRegistry registry) {
 		Assert.notNull(registry, "Registry must not be null");
 		if (!registry.containsBeanDefinition(BEAN_NAME)) {
-			BeanDefinition definition = BeanDefinitionBuilder
-					.genericBeanDefinition(ConfigurationPropertiesBindingPostProcessor.class,
-							ConfigurationPropertiesBindingPostProcessor::new)
-					.getBeanDefinition();
+			GenericBeanDefinition definition = new GenericBeanDefinition();
+			definition.setBeanClass(ConfigurationPropertiesBindingPostProcessor.class);
 			definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 			registry.registerBeanDefinition(BEAN_NAME, definition);
 		}

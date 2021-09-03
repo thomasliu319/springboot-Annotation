@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@ import java.io.File;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.springframework.boot.gradle.junit.GradleCompatibility;
-import org.springframework.boot.testsupport.gradle.testkit.GradleBuild;
+import org.springframework.boot.gradle.junit.GradleCompatibilityExtension;
+import org.springframework.boot.gradle.testkit.GradleBuild;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Andy Wilkinson
  */
-@GradleCompatibility
+@ExtendWith(GradleCompatibilityExtension.class)
 class WarPluginActionIntegrationTests {
 
 	GradleBuild gradleBuild;
@@ -50,14 +51,21 @@ class WarPluginActionIntegrationTests {
 	}
 
 	@TestTemplate
-	void assembleRunsBootWarAndWar() {
+	void assembleRunsBootWarAndWarIsSkipped() {
+		BuildResult result = this.gradleBuild.build("assemble");
+		assertThat(result.task(":bootWar").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+		assertThat(result.task(":war").getOutcome()).isEqualTo(TaskOutcome.SKIPPED);
+	}
+
+	@TestTemplate
+	void warAndBootWarCanBothBeBuilt() {
 		BuildResult result = this.gradleBuild.build("assemble");
 		assertThat(result.task(":bootWar").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
 		assertThat(result.task(":war").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
 		File buildLibs = new File(this.gradleBuild.getProjectDir(), "build/libs");
 		assertThat(buildLibs.listFiles()).containsExactlyInAnyOrder(
 				new File(buildLibs, this.gradleBuild.getProjectDir().getName() + ".war"),
-				new File(buildLibs, this.gradleBuild.getProjectDir().getName() + "-plain.war"));
+				new File(buildLibs, this.gradleBuild.getProjectDir().getName() + "-boot.war"));
 	}
 
 	@TestTemplate

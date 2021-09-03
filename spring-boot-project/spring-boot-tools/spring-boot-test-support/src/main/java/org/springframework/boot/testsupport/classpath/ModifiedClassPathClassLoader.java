@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,9 +77,8 @@ final class ModifiedClassPathClassLoader extends URLClassLoader {
 
 	@Override
 	public Class<?> loadClass(String name) throws ClassNotFoundException {
-		if (name.startsWith("org.junit") || name.startsWith("org.hamcrest")
-				|| name.startsWith("io.netty.internal.tcnative")) {
-			return Class.forName(name, false, this.junitLoader);
+		if (name.startsWith("org.junit") || name.startsWith("org.hamcrest")) {
+			return this.junitLoader.loadClass(name);
 		}
 		return super.loadClass(name);
 	}
@@ -90,14 +89,7 @@ final class ModifiedClassPathClassLoader extends URLClassLoader {
 
 	private static ModifiedClassPathClassLoader compute(Class<?> testClass) {
 		ClassLoader classLoader = testClass.getClassLoader();
-		MergedAnnotations annotations = MergedAnnotations.from(testClass,
-				MergedAnnotations.SearchStrategy.TYPE_HIERARCHY);
-		if (annotations.isPresent(ForkedClassPath.class) && (annotations.isPresent(ClassPathOverrides.class)
-				|| annotations.isPresent(ClassPathExclusions.class))) {
-			throw new IllegalStateException("@ForkedClassPath is redundant in combination with either "
-					+ "@ClassPathOverrides or @ClassPathExclusions");
-		}
-		return new ModifiedClassPathClassLoader(processUrls(extractUrls(classLoader), annotations),
+		return new ModifiedClassPathClassLoader(processUrls(extractUrls(classLoader), testClass),
 				classLoader.getParent(), classLoader);
 	}
 
@@ -132,7 +124,11 @@ final class ModifiedClassPathClassLoader extends URLClassLoader {
 	}
 
 	private static boolean isManifestOnlyJar(URL url) {
-		return isShortenedIntelliJJar(url);
+		return isSurefireBooterJar(url) || isShortenedIntelliJJar(url);
+	}
+
+	private static boolean isSurefireBooterJar(URL url) {
+		return url.getPath().contains("surefirebooter");
 	}
 
 	private static boolean isShortenedIntelliJJar(URL url) {
@@ -174,10 +170,13 @@ final class ModifiedClassPathClassLoader extends URLClassLoader {
 		}
 	}
 
-	private static URL[] processUrls(URL[] urls, MergedAnnotations annotations) {
+	private static URL[] processUrls(URL[] urls, Class<?> testClass) {
+		MergedAnnotations annotations = MergedAnnotations.from(testClass,
+				MergedAnnotations.SearchStrategy.TYPE_HIERARCHY);
 		ClassPathEntryFilter filter = new ClassPathEntryFilter(annotations.get(ClassPathExclusions.class));
+		List<URL> processedUrls = new ArrayList<>();
 		List<URL> additionalUrls = getAdditionalUrls(annotations.get(ClassPathOverrides.class));
-		List<URL> processedUrls = new ArrayList<>(additionalUrls);
+		processedUrls.addAll(additionalUrls);
 		for (URL url : urls) {
 			if (!filter.isExcluded(url)) {
 				processedUrls.add(url);

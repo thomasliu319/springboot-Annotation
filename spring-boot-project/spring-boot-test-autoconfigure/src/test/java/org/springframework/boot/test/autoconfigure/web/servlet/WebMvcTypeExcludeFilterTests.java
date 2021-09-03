@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.io.IOException;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
-import org.thymeleaf.dialect.IDialect;
 
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
@@ -29,7 +28,6 @@ import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.core.type.classreading.SimpleMetadataReaderFactory;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Controller;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
@@ -59,10 +57,8 @@ class WebMvcTypeExcludeFilterTests {
 		assertThat(excludes(filter, ExampleService.class)).isTrue();
 		assertThat(excludes(filter, ExampleRepository.class)).isTrue();
 		assertThat(excludes(filter, ExampleWebSecurityConfigurer.class)).isFalse();
-		assertThat(excludes(filter, SecurityFilterChain.class)).isFalse();
 		assertThat(excludes(filter, ExampleHandlerInterceptor.class)).isFalse();
 		assertThat(excludes(filter, ExampleModule.class)).isFalse();
-		assertThat(excludes(filter, ExampleDialect.class)).isFalse();
 	}
 
 	@Test
@@ -76,10 +72,8 @@ class WebMvcTypeExcludeFilterTests {
 		assertThat(excludes(filter, ExampleService.class)).isTrue();
 		assertThat(excludes(filter, ExampleRepository.class)).isTrue();
 		assertThat(excludes(filter, ExampleWebSecurityConfigurer.class)).isFalse();
-		assertThat(excludes(filter, SecurityFilterChain.class)).isFalse();
 		assertThat(excludes(filter, ExampleHandlerInterceptor.class)).isFalse();
 		assertThat(excludes(filter, ExampleModule.class)).isFalse();
-		assertThat(excludes(filter, ExampleDialect.class)).isFalse();
 	}
 
 	@Test
@@ -93,10 +87,8 @@ class WebMvcTypeExcludeFilterTests {
 		assertThat(excludes(filter, ExampleService.class)).isTrue();
 		assertThat(excludes(filter, ExampleRepository.class)).isTrue();
 		assertThat(excludes(filter, ExampleWebSecurityConfigurer.class)).isTrue();
-		assertThat(excludes(filter, SecurityFilterChain.class)).isTrue();
 		assertThat(excludes(filter, ExampleHandlerInterceptor.class)).isTrue();
 		assertThat(excludes(filter, ExampleModule.class)).isTrue();
-		assertThat(excludes(filter, ExampleDialect.class)).isTrue();
 	}
 
 	@Test
@@ -111,7 +103,6 @@ class WebMvcTypeExcludeFilterTests {
 		assertThat(excludes(filter, ExampleRepository.class)).isFalse();
 		assertThat(excludes(filter, ExampleHandlerInterceptor.class)).isFalse();
 		assertThat(excludes(filter, ExampleModule.class)).isFalse();
-		assertThat(excludes(filter, ExampleDialect.class)).isFalse();
 	}
 
 	@Test
@@ -125,10 +116,8 @@ class WebMvcTypeExcludeFilterTests {
 		assertThat(excludes(filter, ExampleService.class)).isTrue();
 		assertThat(excludes(filter, ExampleRepository.class)).isTrue();
 		assertThat(excludes(filter, ExampleWebSecurityConfigurer.class)).isFalse();
-		assertThat(excludes(filter, SecurityFilterChain.class)).isFalse();
 		assertThat(excludes(filter, ExampleHandlerInterceptor.class)).isFalse();
 		assertThat(excludes(filter, ExampleModule.class)).isFalse();
-		assertThat(excludes(filter, ExampleDialect.class)).isFalse();
 	}
 
 	private boolean excludes(WebMvcTypeExcludeFilter filter, Class<?> type) throws IOException {
@@ -203,15 +192,6 @@ class WebMvcTypeExcludeFilterTests {
 	}
 
 	static class ExampleModule extends SimpleModule {
-
-	}
-
-	static class ExampleDialect implements IDialect {
-
-		@Override
-		public String getName() {
-			return "example";
-		}
 
 	}
 

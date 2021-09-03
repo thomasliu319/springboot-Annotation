@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,13 @@
 package org.springframework.boot.gradle.docs;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 
 import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.condition.DisabledForJreRange;
-import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.boot.gradle.junit.GradleMultiDslExtension;
-import org.springframework.boot.testsupport.gradle.testkit.GradleBuild;
+import org.springframework.boot.gradle.testkit.GradleBuild;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,64 +39,46 @@ class RunningDocumentationTests {
 	GradleBuild gradleBuild;
 
 	@TestTemplate
-	@DisabledForJreRange(min = JRE.JAVA_13)
 	void bootRunMain() throws IOException {
-		writeMainClass();
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/boot-run-main").build("bootRun").getOutput())
-				.contains("com.example.ExampleApplication");
-	}
-
-	@TestTemplate
-	void applicationPluginMainClassName() throws IOException {
-		writeMainClass();
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/application-plugin-main-class-name")
-				.build("bootRun").getOutput()).contains("com.example.ExampleApplication");
-	}
-
-	@TestTemplate
-	void springBootDslMainClassName() throws IOException {
-		writeMainClass();
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/spring-boot-dsl-main-class-name").build("bootRun")
+		assertThat(this.gradleBuild.script("src/main/gradle/running/boot-run-main").build("configuredMainClass")
 				.getOutput()).contains("com.example.ExampleApplication");
 	}
 
 	@TestTemplate
-	void bootRunSourceResources() {
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/boot-run-source-resources")
+	void applicationPluginMainClassName() {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/application-plugin-main-class-name")
+				.build("configuredMainClass").getOutput()).contains("com.example.ExampleApplication");
+	}
+
+	@TestTemplate
+	void springBootDslMainClassName() throws IOException {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/spring-boot-dsl-main-class-name")
+				.build("configuredMainClass").getOutput()).contains("com.example.ExampleApplication");
+	}
+
+	@TestTemplate
+	void bootRunSourceResources() throws IOException {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/boot-run-source-resources")
 				.build("configuredClasspath").getOutput()).contains(new File("src/main/resources").getPath());
 	}
 
 	@TestTemplate
-	void bootRunDisableOptimizedLaunch() {
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/boot-run-disable-optimized-launch")
+	void bootRunDisableOptimizedLaunch() throws IOException {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/boot-run-disable-optimized-launch")
 				.build("optimizedLaunch").getOutput()).contains("false");
 	}
 
 	@TestTemplate
-	void bootRunSystemPropertyDefaultValue() {
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/boot-run-system-property")
+	void bootRunSystemPropertyDefaultValue() throws IOException {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/boot-run-system-property")
 				.build("configuredSystemProperties").getOutput()).contains("com.example.property = default");
 	}
 
 	@TestTemplate
-	void bootRunSystemPropetry() {
-		assertThat(this.gradleBuild.script("src/docs/gradle/running/boot-run-system-property")
+	void bootRunSystemPropetry() throws IOException {
+		assertThat(this.gradleBuild.script("src/main/gradle/running/boot-run-system-property")
 				.build("-Pexample=custom", "configuredSystemProperties").getOutput())
 						.contains("com.example.property = custom");
-	}
-
-	private void writeMainClass() throws IOException {
-		File exampleApplication = new File(this.gradleBuild.getProjectDir(),
-				"src/main/java/com/example/ExampleApplication.java");
-		exampleApplication.getParentFile().mkdirs();
-		try (PrintWriter writer = new PrintWriter(new FileWriter(exampleApplication))) {
-			writer.println("package com.example;");
-			writer.println("public class ExampleApplication {");
-			writer.println("    public static void main(String[] args) {");
-			writer.println("        System.out.println(ExampleApplication.class.getName());");
-			writer.println("    }");
-			writer.println("}");
-		}
 	}
 
 }

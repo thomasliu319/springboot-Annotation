@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,12 +41,7 @@ class BeanCurrentlyInCreationFailureAnalyzer extends AbstractFailureAnalyzer<Bea
 		if (dependencyCycle == null) {
 			return null;
 		}
-		return new FailureAnalysis(buildMessage(dependencyCycle),
-				"Relying upon circular references is discouraged and they are prohibited by default. "
-						+ "Update your application to remove the dependency cycle between beans. "
-						+ "As a last resort, it may be possible to break the cycle automatically be setting "
-						+ "spring.main.allow-circular-references to true if you have not already done so.",
-				cause);
+		return new FailureAnalysis(buildMessage(dependencyCycle), null, cause);
 	}
 
 	private DependencyCycle findCycle(Throwable rootFailure) {
@@ -75,12 +70,11 @@ class BeanCurrentlyInCreationFailureAnalyzer extends AbstractFailureAnalyzer<Bea
 		message.append(
 				String.format("The dependencies of some of the beans in the application context form a cycle:%n%n"));
 		List<BeanInCycle> beansInCycle = dependencyCycle.getBeansInCycle();
-		boolean singleBean = beansInCycle.size() == 1;
 		int cycleStart = dependencyCycle.getCycleStart();
 		for (int i = 0; i < beansInCycle.size(); i++) {
 			BeanInCycle beanInCycle = beansInCycle.get(i);
 			if (i == cycleStart) {
-				message.append(String.format(singleBean ? "┌──->──┐%n" : "┌─────┐%n"));
+				message.append(String.format("┌─────┐%n"));
 			}
 			else if (i > 0) {
 				String leftSide = (i < cycleStart) ? " " : "↑";
@@ -89,7 +83,7 @@ class BeanCurrentlyInCreationFailureAnalyzer extends AbstractFailureAnalyzer<Bea
 			String leftSide = (i < cycleStart) ? " " : "|";
 			message.append(String.format("%s  %s%n", leftSide, beanInCycle));
 		}
-		message.append(String.format(singleBean ? "└──<-──┘%n" : "└─────┘%n"));
+		message.append(String.format("└─────┘%n"));
 		return message.toString();
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,16 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 
+import javax.servlet.Filter;
 import javax.servlet.FilterRegistration;
 import javax.servlet.Servlet;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletRegistration;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.boot.web.servlet.mock.MockServlet;
 
@@ -46,7 +47,6 @@ import static org.mockito.Mockito.verify;
  *
  * @author Phillip Webb
  */
-@ExtendWith(MockitoExtension.class)
 class ServletRegistrationBeanTests {
 
 	private final MockServlet servlet = new MockServlet();
@@ -60,9 +60,15 @@ class ServletRegistrationBeanTests {
 	@Mock
 	private FilterRegistration.Dynamic filterRegistration;
 
+	@BeforeEach
+	void setupMocks() {
+		MockitoAnnotations.initMocks(this);
+		given(this.servletContext.addServlet(anyString(), any(Servlet.class))).willReturn(this.registration);
+		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.filterRegistration);
+	}
+
 	@Test
 	void startupWithDefaults() throws Exception {
-		given(this.servletContext.addServlet(anyString(), any(Servlet.class))).willReturn(this.registration);
 		ServletRegistrationBean<MockServlet> bean = new ServletRegistrationBean<>(this.servlet);
 		bean.onStartup(this.servletContext);
 		verify(this.servletContext).addServlet("mockServlet", this.servlet);
@@ -81,7 +87,6 @@ class ServletRegistrationBeanTests {
 
 	@Test
 	void startupWithSpecifiedValues() throws Exception {
-		given(this.servletContext.addServlet(anyString(), any(Servlet.class))).willReturn(this.registration);
 		ServletRegistrationBean<MockServlet> bean = new ServletRegistrationBean<>();
 		bean.setName("test");
 		bean.setServlet(this.servlet);
@@ -129,7 +134,7 @@ class ServletRegistrationBeanTests {
 	}
 
 	@Test
-	void setServletMustNotBeNull() {
+	void setServletMustNotBeNull() throws Exception {
 		ServletRegistrationBean<MockServlet> bean = new ServletRegistrationBean<>();
 		assertThatIllegalArgumentException().isThrownBy(() -> bean.onStartup(this.servletContext))
 				.withMessageContaining("Servlet must not be null");
@@ -164,7 +169,6 @@ class ServletRegistrationBeanTests {
 
 	@Test
 	void setMappingReplacesValue() throws Exception {
-		given(this.servletContext.addServlet(anyString(), any(Servlet.class))).willReturn(this.registration);
 		ServletRegistrationBean<MockServlet> bean = new ServletRegistrationBean<>(this.servlet, "/a", "/b");
 		bean.setUrlMappings(new LinkedHashSet<>(Arrays.asList("/c", "/d")));
 		bean.onStartup(this.servletContext);
@@ -173,7 +177,6 @@ class ServletRegistrationBeanTests {
 
 	@Test
 	void modifyInitParameters() throws Exception {
-		given(this.servletContext.addServlet(anyString(), any(Servlet.class))).willReturn(this.registration);
 		ServletRegistrationBean<MockServlet> bean = new ServletRegistrationBean<>(this.servlet, "/a", "/b");
 		bean.addInitParameter("a", "b");
 		bean.getInitParameters().put("a", "c");

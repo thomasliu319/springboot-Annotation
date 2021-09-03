@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@
 package org.springframework.boot.autoconfigure.web.format;
 
 import java.time.format.DateTimeFormatter;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.time.format.ResolverStyle;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.joda.time.format.DateTimeFormatterBuilder;
 
 import org.springframework.format.datetime.DateFormatter;
 import org.springframework.format.datetime.DateFormatterRegistrar;
+import org.springframework.format.datetime.joda.JodaTimeFormatterRegistrar;
 import org.springframework.format.datetime.standard.DateTimeFormatterRegistrar;
 import org.springframework.format.number.NumberFormatAnnotationFormatterFactory;
 import org.springframework.format.number.money.CurrencyUnitFormatter;
@@ -29,6 +33,7 @@ import org.springframework.format.number.money.Jsr354NumberFormatAnnotationForma
 import org.springframework.format.number.money.MonetaryAmountFormatter;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * {@link org.springframework.format.support.FormattingConversionService} dedicated to web
@@ -46,55 +51,67 @@ public class WebConversionService extends DefaultFormattingConversionService {
 	private static final boolean JSR_354_PRESENT = ClassUtils.isPresent("javax.money.MonetaryAmount",
 			WebConversionService.class.getClassLoader());
 
+	@Deprecated
+	private static final boolean JODA_TIME_PRESENT = ClassUtils.isPresent("org.joda.time.LocalDate",
+			WebConversionService.class.getClassLoader());
+
+	private static final Log logger = LogFactory.getLog(WebConversionService.class);
+
+	private final String dateFormat;
+
 	/**
-	 * Create a new WebConversionService that configures formatters with the provided
-	 * date, time, and date-time formats, or registers the default if no custom format is
-	 * provided.
-	 * @param dateTimeFormatters the formatters to use for date, time, and date-time
-	 * formatting
-	 * @since 2.3.0
+	 * Create a new WebConversionService that configures formatters with the provided date
+	 * format, or register the default ones if no custom format is provided.
+	 * @param dateFormat the custom date format to use for date conversions
 	 */
-	public WebConversionService(DateTimeFormatters dateTimeFormatters) {
+	public WebConversionService(String dateFormat) {
 		super(false);
-		if (dateTimeFormatters.isCustomized()) {
-			addFormatters(dateTimeFormatters);
+		this.dateFormat = StringUtils.hasText(dateFormat) ? dateFormat : null;
+		if (this.dateFormat != null) {
+			addFormatters();
 		}
 		else {
 			addDefaultFormatters(this);
 		}
 	}
 
-	private void addFormatters(DateTimeFormatters dateTimeFormatters) {
+	private void addFormatters() {
 		addFormatterForFieldAnnotation(new NumberFormatAnnotationFormatterFactory());
 		if (JSR_354_PRESENT) {
 			addFormatter(new CurrencyUnitFormatter());
 			addFormatter(new MonetaryAmountFormatter());
 			addFormatterForFieldAnnotation(new Jsr354NumberFormatAnnotationFormatterFactory());
 		}
-		registerJsr310(dateTimeFormatters);
-		registerJavaDate(dateTimeFormatters);
+		registerJsr310();
+		if (JODA_TIME_PRESENT) {
+			registerJodaTime();
+		}
+		registerJavaDate();
 	}
 
-	private void registerJsr310(DateTimeFormatters dateTimeFormatters) {
+	private void registerJsr310() {
 		DateTimeFormatterRegistrar dateTime = new DateTimeFormatterRegistrar();
-		configure(dateTimeFormatters::getDateFormatter, dateTime::setDateFormatter);
-		configure(dateTimeFormatters::getTimeFormatter, dateTime::setTimeFormatter);
-		configure(dateTimeFormatters::getDateTimeFormatter, dateTime::setDateTimeFormatter);
+		if (this.dateFormat != null) {
+			dateTime.setDateFormatter(
+					DateTimeFormatter.ofPattern(this.dateFormat).withResolverStyle(ResolverStyle.SMART));
+		}
 		dateTime.registerFormatters(this);
 	}
 
-	private void configure(Supplier<DateTimeFormatter> supplier, Consumer<DateTimeFormatter> consumer) {
-		DateTimeFormatter formatter = supplier.get();
-		if (formatter != null) {
-			consumer.accept(formatter);
+	@Deprecated
+	private void registerJodaTime() {
+		logger.warn("Auto-configuration of Joda-Time formatters is deprecated in favor of using java.time (JSR-310).");
+		JodaTimeFormatterRegistrar jodaTime = new JodaTimeFormatterRegistrar();
+		if (this.dateFormat != null) {
+			jodaTime.setDateFormatter(new DateTimeFormatterBuilder().appendPattern(this.dateFormat).toFormatter());
 		}
+		jodaTime.registerFormatters(this);
 	}
 
-	private void registerJavaDate(DateTimeFormatters dateTimeFormatters) {
+	private void registerJavaDate() {
 		DateFormatterRegistrar dateFormatterRegistrar = new DateFormatterRegistrar();
-		String datePattern = dateTimeFormatters.getDatePattern();
-		if (datePattern != null) {
-			DateFormatter dateFormatter = new DateFormatter(datePattern);
+		if (this.dateFormat != null) {
+			DateFormatter dateFormatter = new DateFormatter(this.dateFormat);
 			dateFormatterRegistrar.setFormatter(dateFormatter);
 		}
 		dateFormatterRegistrar.registerFormatters(this);

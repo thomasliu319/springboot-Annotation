@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 
 package org.springframework.boot.actuate.autoconfigure.endpoint.expose;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.boot.actuate.endpoint.EndpointFilter;
 import org.springframework.boot.actuate.endpoint.EndpointId;
@@ -36,10 +36,14 @@ import static org.mockito.Mockito.mock;
  *
  * @author Phillip Webb
  */
-@ExtendWith(MockitoExtension.class)
 class IncludeExcludeEndpointFilterTests {
 
 	private IncludeExcludeEndpointFilter<?> filter;
+
+	@BeforeEach
+	void setup() {
+		MockitoAnnotations.initMocks(this);
+	}
 
 	@Test
 	void createWhenEndpointTypeIsNullShouldThrowException() {
@@ -119,7 +123,7 @@ class IncludeExcludeEndpointFilterTests {
 		environment.setProperty("foo.include", "bar");
 		environment.setProperty("foo.exclude", "");
 		this.filter = new IncludeExcludeEndpointFilter<>(DifferentTestExposableWebEndpoint.class, environment, "foo");
-		assertThat(match()).isTrue();
+		assertThat(match(EndpointId.of("baz"))).isTrue();
 	}
 
 	@Test
@@ -145,7 +149,7 @@ class IncludeExcludeEndpointFilterTests {
 	}
 
 	@Test // gh-20997
-	void matchWhenDashInName() {
+	void matchWhenDashInName() throws Exception {
 		setupFilter("bus-refresh", "");
 		assertThat(match(EndpointId.of("bus-refresh"))).isTrue();
 	}
@@ -157,16 +161,10 @@ class IncludeExcludeEndpointFilterTests {
 		this.filter = new IncludeExcludeEndpointFilter<>(TestExposableWebEndpoint.class, environment, "foo", "def");
 	}
 
-	private boolean match() {
-		return match(null);
-	}
-
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private boolean match(EndpointId id) {
 		ExposableEndpoint<?> endpoint = mock(TestExposableWebEndpoint.class);
-		if (id != null) {
-			given(endpoint.getEndpointId()).willReturn(id);
-		}
+		given(endpoint.getEndpointId()).willReturn(id);
 		return ((EndpointFilter) this.filter).match(endpoint);
 	}
 

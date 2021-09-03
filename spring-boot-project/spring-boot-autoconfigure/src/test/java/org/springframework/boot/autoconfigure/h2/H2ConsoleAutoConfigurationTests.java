@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -101,20 +102,18 @@ class H2ConsoleAutoConfigurationTests {
 	@Test
 	void customInitParameters() {
 		this.contextRunner.withPropertyValues("spring.h2.console.enabled=true", "spring.h2.console.settings.trace=true",
-				"spring.h2.console.settings.web-allow-others=true",
-				"spring.h2.console.settings.web-admin-password=abcd").run((context) -> {
+				"spring.h2.console.settings.web-allow-others=true").run((context) -> {
 					assertThat(context).hasSingleBean(ServletRegistrationBean.class);
 					ServletRegistrationBean<?> registrationBean = context.getBean(ServletRegistrationBean.class);
 					assertThat(registrationBean.getUrlMappings()).contains("/h2-console/*");
 					assertThat(registrationBean.getInitParameters()).containsEntry("trace", "");
 					assertThat(registrationBean.getInitParameters()).containsEntry("webAllowOthers", "");
-					assertThat(registrationBean.getInitParameters()).containsEntry("webAdminPassword", "abcd");
 				});
 	}
 
 	@Test
 	@ExtendWith(OutputCaptureExtension.class)
-	void dataSourceUrlIsLoggedWhenAvailable(CapturedOutput output) {
+	void dataSourceUrlIsLoggedWhenAvailable(CapturedOutput output) throws BeansException {
 		this.contextRunner.withConfiguration(AutoConfigurations.of(DataSourceAutoConfiguration.class))
 				.withPropertyValues("spring.h2.console.enabled=true").run((context) -> {
 					try (Connection connection = context.getBean(DataSource.class).getConnection()) {

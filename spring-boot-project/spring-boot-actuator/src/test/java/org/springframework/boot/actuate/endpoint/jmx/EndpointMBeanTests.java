@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.net.URLClassLoader;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
+import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.ReflectionException;
@@ -86,7 +87,7 @@ class EndpointMBeanTests {
 	}
 
 	@Test
-	void invokeWhenOperationFailedShouldTranslateException() {
+	void invokeWhenOperationFailedShouldTranslateException() throws MBeanException, ReflectionException {
 		TestExposableJmxEndpoint endpoint = new TestExposableJmxEndpoint(new TestJmxOperation((arguments) -> {
 			throw new FatalBeanException("test failure");
 		}));
@@ -98,7 +99,7 @@ class EndpointMBeanTests {
 	}
 
 	@Test
-	void invokeWhenOperationFailedWithJdkExceptionShouldReuseException() {
+	void invokeWhenOperationFailedWithJdkExceptionShouldReuseException() throws MBeanException, ReflectionException {
 		TestExposableJmxEndpoint endpoint = new TestExposableJmxEndpoint(new TestJmxOperation((arguments) -> {
 			throw new UnsupportedOperationException("test failure");
 		}));
@@ -109,7 +110,7 @@ class EndpointMBeanTests {
 	}
 
 	@Test
-	void invokeWhenActionNameIsNotAnOperationShouldThrowException() {
+	void invokeWhenActionNameIsNotAnOperationShouldThrowException() throws MBeanException, ReflectionException {
 		EndpointMBean bean = createEndpointMBean();
 		assertThatExceptionOfType(ReflectionException.class)
 				.isThrownBy(() -> bean.invoke("missingOperation", NO_PARAMS, NO_SIGNATURE))
@@ -130,7 +131,7 @@ class EndpointMBeanTests {
 	}
 
 	@Test
-	void invokeWhenOperationIsInvalidShouldThrowException() {
+	void invokeWhenOperationIsInvalidShouldThrowException() throws MBeanException, ReflectionException {
 		TestJmxOperation operation = new TestJmxOperation() {
 
 			@Override
@@ -165,14 +166,15 @@ class EndpointMBeanTests {
 	}
 
 	@Test
-	void getAttributeShouldThrowException() {
+	void getAttributeShouldThrowException() throws AttributeNotFoundException, MBeanException, ReflectionException {
 		EndpointMBean bean = createEndpointMBean();
 		assertThatExceptionOfType(AttributeNotFoundException.class).isThrownBy(() -> bean.getAttribute("test"))
 				.withMessageContaining("EndpointMBeans do not support attributes");
 	}
 
 	@Test
-	void setAttributeShouldThrowException() {
+	void setAttributeShouldThrowException()
+			throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
 		EndpointMBean bean = createEndpointMBean();
 		assertThatExceptionOfType(AttributeNotFoundException.class)
 				.isThrownBy(() -> bean.setAttribute(new Attribute("test", "test")))

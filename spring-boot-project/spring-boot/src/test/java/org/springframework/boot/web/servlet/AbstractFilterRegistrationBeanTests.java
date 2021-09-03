@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,10 @@ import javax.servlet.Filter;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletContext;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,7 +46,6 @@ import static org.mockito.Mockito.verify;
  *
  * @author Phillip Webb
  */
-@ExtendWith(MockitoExtension.class)
 abstract class AbstractFilterRegistrationBeanTests {
 
 	@Mock
@@ -55,9 +54,14 @@ abstract class AbstractFilterRegistrationBeanTests {
 	@Mock
 	FilterRegistration.Dynamic registration;
 
+	@BeforeEach
+	void setupMocks() {
+		MockitoAnnotations.initMocks(this);
+		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
+	}
+
 	@Test
 	void startupWithDefaults() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean();
 		bean.onStartup(this.servletContext);
 		verify(this.servletContext).addFilter(eq("mockFilter"), getExpectedFilter());
@@ -67,7 +71,6 @@ abstract class AbstractFilterRegistrationBeanTests {
 
 	@Test
 	void startupWithSpecifiedValues() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean();
 		bean.setName("test");
 		bean.setAsyncSupported(false);
@@ -132,7 +135,6 @@ abstract class AbstractFilterRegistrationBeanTests {
 
 	@Test
 	void setServletRegistrationBeanReplacesValue() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean(mockServletRegistration("a"));
 		bean.setServletRegistrationBeans(
 				new LinkedHashSet<ServletRegistrationBean<?>>(Collections.singletonList(mockServletRegistration("b"))));
@@ -142,7 +144,6 @@ abstract class AbstractFilterRegistrationBeanTests {
 
 	@Test
 	void modifyInitParameters() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean();
 		bean.addInitParameter("a", "b");
 		bean.getInitParameters().put("a", "c");
@@ -180,7 +181,6 @@ abstract class AbstractFilterRegistrationBeanTests {
 
 	@Test
 	void withSpecificDispatcherTypes() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean();
 		bean.setDispatcherTypes(DispatcherType.INCLUDE, DispatcherType.FORWARD);
 		bean.onStartup(this.servletContext);
@@ -190,7 +190,6 @@ abstract class AbstractFilterRegistrationBeanTests {
 
 	@Test
 	void withSpecificDispatcherTypesEnumSet() throws Exception {
-		given(this.servletContext.addFilter(anyString(), any(Filter.class))).willReturn(this.registration);
 		AbstractFilterRegistrationBean<?> bean = createFilterRegistrationBean();
 		EnumSet<DispatcherType> types = EnumSet.of(DispatcherType.INCLUDE, DispatcherType.FORWARD);
 		bean.setDispatcherTypes(types);

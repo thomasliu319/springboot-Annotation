@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,30 @@
 
 package org.springframework.boot.testsupport.classpath;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URLClassLoader;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.TestPlan;
-import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
-import org.junit.platform.launcher.core.LauncherFactory;
-import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
-import org.junit.platform.launcher.listeners.TestExecutionSummary;
 
+import org.springframework.boot.testsupport.junit.platform.Launcher;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequest;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequestBuilder;
+import org.springframework.boot.testsupport.junit.platform.SummaryGeneratingListener;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
 
 /**
  * A custom {@link Extension} that runs tests using a modified class path. Entries are
  * excluded from the class path using {@link ClassPathExclusions @ClassPathExclusions} and
- * overridden using {@link ClassPathOverrides @ClassPathOverrides} on the test class. For
- * an unchanged copy of the class path {@link ForkedClassPath @ForkedClassPath} can be
- * used. A class loader is created with the customized class path and is used both to load
- * the test class and as the thread context class loader while the test is being run.
+ * overridden using {@link ClassPathOverrides @ClassPathOverrides} on the test class. A
+ * class loader is created with the customized class path and is used both to load the
+ * test class and as the thread context class loader while the test is being run.
  *
  * @author Christoph Dreis
  */
@@ -79,12 +76,12 @@ class ModifiedClassPathExtension implements InvocationInterceptor {
 			invocation.proceed();
 			return;
 		}
-		invocation.skip();
+		fakeInvocation(invocation);
 		runTestWithModifiedClassPath(invocationContext, extensionContext);
 	}
 
 	private void runTestWithModifiedClassPath(ReflectiveInvocationContext<Method> invocationContext,
-			ExtensionContext extensionContext) throws Throwable {
+			ExtensionContext extensionContext) throws ClassNotFoundException, Throwable {
 		Class<?> testClass = extensionContext.getRequiredTestClass();
 		Method testMethod = invocationContext.getExecutable();
 		ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
@@ -98,19 +95,19 @@ class ModifiedClassPathExtension implements InvocationInterceptor {
 		}
 	}
 
-	private void runTest(ClassLoader classLoader, String testClassName, String testMethodName) throws Throwable {
+	private void runTest(ClassLoader classLoader, String testClassName, String testMethodName)
+			throws ClassNotFoundException, Throwable {
 		Class<?> testClass = classLoader.loadClass(testClassName);
 		Method testMethod = findMethod(testClass, testMethodName);
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+		LauncherDiscoveryRequest request = new LauncherDiscoveryRequestBuilder(classLoader)
 				.selectors(DiscoverySelectors.selectMethod(testClass, testMethod)).build();
-		Launcher launcher = LauncherFactory.create();
-		TestPlan testPlan = launcher.discover(request);
-		SummaryGeneratingListener listener = new SummaryGeneratingListener();
+		Launcher launcher = new Launcher(classLoader);
+		SummaryGeneratingListener listener = new SummaryGeneratingListener(classLoader);
 		launcher.registerTestExecutionListeners(listener);
-		launcher.execute(testPlan);
-		TestExecutionSummary summary = listener.getSummary();
-		if (!CollectionUtils.isEmpty(summary.getFailures())) {
-			throw summary.getFailures().get(0).getException();
+		launcher.execute(request);
+		Throwable failure = listener.getSummary().getFailure();
+		if (failure != null) {
+			throw failure;
 		}
 	}
 
@@ -124,7 +121,7 @@ class ModifiedClassPathExtension implements InvocationInterceptor {
 				}
 			}
 		}
-		Assert.state(method != null, () -> "Unable to find " + testClass + "." + testMethodName);
+		Assert.state(method != null, "Unable to find " + testClass + "." + testMethodName);
 		return method;
 	}
 
@@ -133,7 +130,17 @@ class ModifiedClassPathExtension implements InvocationInterceptor {
 			invocation.proceed();
 			return;
 		}
-		invocation.skip();
+		fakeInvocation(invocation);
+	}
+
+	private void fakeInvocation(Invocation<Void> invocation) {
+		try {
+			Field field = ReflectionUtils.findField(invocation.getClass(), "invoked");
+			ReflectionUtils.makeAccessible(field);
+			ReflectionUtils.setField(field, invocation, new AtomicBoolean(true));
+		}
+		catch (Throwable ex) {
+		}
 	}
 
 	private boolean isModifiedClassPathClassLoader(ExtensionContext extensionContext) {

@@ -1,0 +1,11 @@
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/sample/ClassWithMainMethod.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/sample/ClassWithoutMainMethod.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/RunArgumentsTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/SystemPropertyFormatterTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/EnvVariablesTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/ExcludeFilterTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/DependencyFilterMojoTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/IncludeFilterTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/Verify.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/ArtifactsLibrariesTests.java
+/Users/thomasliu/myspace/spring-boot/spring-boot-project/spring-boot-tools/spring-boot-maven-plugin/src/test/java/org/springframework/boot/maven/PropertiesMergingResourceTransformerTests.java

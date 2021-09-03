@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.boot.autoconfigure.web.servlet;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,7 +30,6 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
-import org.springframework.boot.web.server.Shutdown;
 import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
 import org.springframework.boot.web.servlet.server.Jsp;
@@ -74,14 +74,6 @@ class ServletWebServerFactoryCustomizerTests {
 	}
 
 	@Test
-	void testCustomizeDefaultServlet() {
-		ConfigurableServletWebServerFactory factory = mock(ConfigurableServletWebServerFactory.class);
-		this.properties.getServlet().setRegisterDefaultServlet(false);
-		this.customizer.customize(factory);
-		verify(factory).setRegisterDefaultServlet(false);
-	}
-
-	@Test
 	void testCustomizeSsl() {
 		ConfigurableServletWebServerFactory factory = mock(ConfigurableServletWebServerFactory.class);
 		Ssl ssl = mock(Ssl.class);
@@ -98,7 +90,7 @@ class ServletWebServerFactoryCustomizerTests {
 	}
 
 	@Test
-	void customizeSessionProperties() {
+	void customizeSessionProperties() throws Exception {
 		Map<String, String> map = new HashMap<>();
 		map.put("server.servlet.session.timeout", "123");
 		map.put("server.servlet.session.tracking-modes", "cookie,url");
@@ -114,14 +106,14 @@ class ServletWebServerFactoryCustomizerTests {
 		this.customizer.customize(factory);
 		ArgumentCaptor<Session> sessionCaptor = ArgumentCaptor.forClass(Session.class);
 		verify(factory).setSession(sessionCaptor.capture());
-		assertThat(sessionCaptor.getValue().getTimeout()).hasSeconds(123);
+		assertThat(sessionCaptor.getValue().getTimeout()).isEqualTo(Duration.ofSeconds(123));
 		Cookie cookie = sessionCaptor.getValue().getCookie();
 		assertThat(cookie.getName()).isEqualTo("testname");
 		assertThat(cookie.getDomain()).isEqualTo("testdomain");
 		assertThat(cookie.getPath()).isEqualTo("/testpath");
 		assertThat(cookie.getComment()).isEqualTo("testcomment");
 		assertThat(cookie.getHttpOnly()).isTrue();
-		assertThat(cookie.getMaxAge()).hasSeconds(60);
+		assertThat(cookie.getMaxAge()).isEqualTo(Duration.ofSeconds(60));
 
 	}
 
@@ -146,33 +138,21 @@ class ServletWebServerFactoryCustomizerTests {
 	@Test
 	void testCustomizeTomcatMinSpareThreads() {
 		Map<String, String> map = new HashMap<>();
-		map.put("server.tomcat.threads.min-spare", "10");
+		map.put("server.tomcat.min-spare-threads", "10");
 		bindProperties(map);
-		assertThat(this.properties.getTomcat().getThreads().getMinSpare()).isEqualTo(10);
+		assertThat(this.properties.getTomcat().getMinSpareThreads()).isEqualTo(10);
 	}
 
 	@Test
 	void sessionStoreDir() {
 		Map<String, String> map = new HashMap<>();
-		map.put("server.servlet.session.store-dir", "mydirectory");
+		map.put("server.servlet.session.store-dir", "myfolder");
 		bindProperties(map);
 		ConfigurableServletWebServerFactory factory = mock(ConfigurableServletWebServerFactory.class);
 		this.customizer.customize(factory);
 		ArgumentCaptor<Session> sessionCaptor = ArgumentCaptor.forClass(Session.class);
 		verify(factory).setSession(sessionCaptor.capture());
-		assertThat(sessionCaptor.getValue().getStoreDir()).isEqualTo(new File("mydirectory"));
-	}
-
-	@Test
-	void whenShutdownPropertyIsSetThenShutdownIsCustomized() {
-		Map<String, String> map = new HashMap<>();
-		map.put("server.shutdown", "graceful");
-		bindProperties(map);
-		ConfigurableServletWebServerFactory factory = mock(ConfigurableServletWebServerFactory.class);
-		this.customizer.customize(factory);
-		ArgumentCaptor<Shutdown> shutdownCaptor = ArgumentCaptor.forClass(Shutdown.class);
-		verify(factory).setShutdown(shutdownCaptor.capture());
-		assertThat(shutdownCaptor.getValue()).isEqualTo(Shutdown.GRACEFUL);
+		assertThat(sessionCaptor.getValue().getStoreDir()).isEqualTo(new File("myfolder"));
 	}
 
 	private void bindProperties(Map<String, String> map) {

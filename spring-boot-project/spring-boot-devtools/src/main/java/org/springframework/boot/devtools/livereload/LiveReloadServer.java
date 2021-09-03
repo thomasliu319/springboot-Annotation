@@ -283,7 +283,7 @@ public class LiveReloadServer {
 			}
 		}
 
-		private void runConnection(Connection connection) throws Exception {
+		private void runConnection(Connection connection) throws IOException, Exception {
 			try {
 				addConnection(connection);
 				connection.run();

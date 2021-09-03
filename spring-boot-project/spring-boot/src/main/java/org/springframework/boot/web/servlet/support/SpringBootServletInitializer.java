@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,6 @@
 
 package org.springframework.boot.web.servlet.support;
 
-import java.sql.Driver;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.Collections;
 
 import javax.servlet.Filter;
@@ -34,7 +31,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.builder.ParentContextApplicationContextInitializer;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
-import org.springframework.boot.context.logging.LoggingApplicationListener;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext;
 import org.springframework.context.ApplicationContext;
@@ -90,39 +86,21 @@ public abstract class SpringBootServletInitializer implements WebApplicationInit
 
 	@Override
 	public void onStartup(ServletContext servletContext) throws ServletException {
-		servletContext.setAttribute(LoggingApplicationListener.REGISTER_SHUTDOWN_HOOK_PROPERTY, false);
 		// Logger initialization is deferred in case an ordered
 		// LogServletContextInitializer is being used
 		this.logger = LogFactory.getLog(getClass());
-		WebApplicationContext rootApplicationContext = createRootApplicationContext(servletContext);
-		if (rootApplicationContext != null) {
-			servletContext.addListener(new SpringBootContextLoaderListener(rootApplicationContext, servletContext));
+		WebApplicationContext rootAppContext = createRootApplicationContext(servletContext);
+		if (rootAppContext != null) {
+			servletContext.addListener(new ContextLoaderListener(rootAppContext) {
+				@Override
+				public void contextInitialized(ServletContextEvent event) {
+					// no-op because the application context is already initialized
+				}
+			});
 		}
 		else {
 			this.logger.debug("No ContextLoaderListener registered, as createRootApplicationContext() did not "
 					+ "return an application context");
-		}
-	}
-
-	/**
-	 * Deregisters the JDBC drivers that were registered by the application represented by
-	 * the given {@code servletContext}. The default implementation
-	 * {@link DriverManager#deregisterDriver(Driver) deregisters} every {@link Driver}
-	 * that was loaded by the {@link ServletContext#getClassLoader web application's class
-	 * loader}.
-	 * @param servletContext the web application's servlet context
-	 * @since 2.3.0
-	 */
-	protected void deregisterJdbcDrivers(ServletContext servletContext) {
-		for (Driver driver : Collections.list(DriverManager.getDrivers())) {
-			if (driver.getClass().getClassLoader() == servletContext.getClassLoader()) {
-				try {
-					DriverManager.deregisterDriver(driver);
-				}
-				catch (SQLException ex) {
-					// Continue
-				}
-			}
 		}
 	}
 
@@ -136,7 +114,7 @@ public abstract class SpringBootServletInitializer implements WebApplicationInit
 			builder.initializers(new ParentContextApplicationContextInitializer(parent));
 		}
 		builder.initializers(new ServletContextApplicationContextInitializer(servletContext));
-		builder.contextFactory((webApplicationType) -> new AnnotationConfigServletWebServerApplicationContext());
+		builder.contextClass(AnnotationConfigServletWebServerApplicationContext.class);
 		builder = configure(builder);
 		builder.listeners(new WebEnvironmentPropertySourceInitializer(servletContext));
 		SpringApplication application = builder.build();
@@ -151,7 +129,6 @@ public abstract class SpringBootServletInitializer implements WebApplicationInit
 		if (this.registerErrorPageFilter) {
 			application.addPrimarySources(Collections.singleton(ErrorPageFilterConfiguration.class));
 		}
-		application.setRegisterShutdownHook(false);
 		return run(application);
 	}
 
@@ -196,10 +173,6 @@ public abstract class SpringBootServletInitializer implements WebApplicationInit
 		return builder;
 	}
 
-	/**
-	 * {@link ApplicationListener} to trigger
-	 * {@link ConfigurableWebEnvironment#initPropertySources(ServletContext, javax.servlet.ServletConfig)}.
-	 */
 	private static final class WebEnvironmentPropertySourceInitializer
 			implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
 
@@ -220,36 +193,6 @@ public abstract class SpringBootServletInitializer implements WebApplicationInit
 		@Override
 		public int getOrder() {
 			return Ordered.HIGHEST_PRECEDENCE;
-		}
-
-	}
-
-	/**
-	 * {@link ContextLoaderListener} for the initialized context.
-	 */
-	private class SpringBootContextLoaderListener extends ContextLoaderListener {
-
-		private final ServletContext servletContext;
-
-		SpringBootContextLoaderListener(WebApplicationContext applicationContext, ServletContext servletContext) {
-			super(applicationContext);
-			this.servletContext = servletContext;
-		}
-
-		@Override
-		public void contextInitialized(ServletContextEvent event) {
-			// no-op because the application context is already initialized
-		}
-
-		@Override
-		public void contextDestroyed(ServletContextEvent event) {
-			try {
-				super.contextDestroyed(event);
-			}
-			finally {
-				// Use original context so that the classloader can be accessed
-				deregisterJdbcDrivers(this.servletContext);
-			}
 		}
 
 	}

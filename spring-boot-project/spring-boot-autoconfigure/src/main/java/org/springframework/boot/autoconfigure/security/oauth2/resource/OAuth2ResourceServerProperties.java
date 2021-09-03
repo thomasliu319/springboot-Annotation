@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.source.InvalidConfigurationPropertyValueException;
 import org.springframework.core.io.Resource;
@@ -34,7 +35,7 @@ import org.springframework.util.StreamUtils;
  * @since 2.1.0
  */
 @ConfigurationProperties(prefix = "spring.security.oauth2.resourceserver")
-public class OAuth2ResourceServerProperties {
+public class OAuth2ResourceServerProperties implements InitializingBean {
 
 	private final Jwt jwt = new Jwt();
 
@@ -46,6 +47,30 @@ public class OAuth2ResourceServerProperties {
 
 	public Opaquetoken getOpaquetoken() {
 		return this.opaqueToken;
+	}
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		validate();
+	}
+
+	public void validate() {
+		if (this.getOpaquetoken().getIntrospectionUri() != null) {
+			if (this.getJwt().getJwkSetUri() != null) {
+				handleError("jwt.jwk-set-uri");
+			}
+			if (this.getJwt().getIssuerUri() != null) {
+				handleError("jwt.issuer-uri");
+			}
+			if (this.getJwt().getPublicKeyLocation() != null) {
+				handleError("jwt.public-key-location");
+			}
+		}
+	}
+
+	private void handleError(String property) {
+		throw new IllegalStateException(
+				"Only one of " + property + " and opaquetoken.introspection-uri should be configured.");
 	}
 
 	public static class Jwt {

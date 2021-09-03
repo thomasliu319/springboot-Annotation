@@ -39,10 +39,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class RSocketSecurityAutoConfigurationTests {
 
-	private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(ReactiveUserDetailsServiceAutoConfiguration.class,
-					RSocketSecurityAutoConfiguration.class, RSocketMessagingAutoConfiguration.class,
-					RSocketStrategiesAutoConfiguration.class));
+	private ApplicationContextRunner contextRunner = new ApplicationContextRunner().withConfiguration(AutoConfigurations
+			.of(ReactiveUserDetailsServiceAutoConfiguration.class, RSocketSecurityAutoConfiguration.class,
+					RSocketMessagingAutoConfiguration.class, RSocketStrategiesAutoConfiguration.class));
 
 	@Test
 	void autoConfigurationEnablesRSocketSecurity() {

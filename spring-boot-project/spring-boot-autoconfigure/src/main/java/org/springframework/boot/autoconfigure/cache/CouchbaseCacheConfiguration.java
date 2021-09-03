@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,55 +16,47 @@
 
 package org.springframework.boot.autoconfigure.cache;
 
-import java.util.LinkedHashSet;
+import java.time.Duration;
 import java.util.List;
 
-import com.couchbase.client.java.Cluster;
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.spring.cache.CacheBuilder;
+import com.couchbase.client.spring.cache.CouchbaseCacheManager;
 
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.cache.CacheProperties.Couchbase;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
+import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.couchbase.CouchbaseClientFactory;
-import org.springframework.data.couchbase.cache.CouchbaseCacheManager;
-import org.springframework.data.couchbase.cache.CouchbaseCacheManager.CouchbaseCacheManagerBuilder;
-import org.springframework.util.ObjectUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * Couchbase cache configuration.
  *
  * @author Stephane Nicoll
+ * @since 1.4.0
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnClass({ Cluster.class, CouchbaseClientFactory.class, CouchbaseCacheManager.class })
+@ConditionalOnClass({ Bucket.class, CouchbaseCacheManager.class })
 @ConditionalOnMissingBean(CacheManager.class)
-@ConditionalOnSingleCandidate(CouchbaseClientFactory.class)
+@ConditionalOnSingleCandidate(Bucket.class)
 @Conditional(CacheCondition.class)
-class CouchbaseCacheConfiguration {
+public class CouchbaseCacheConfiguration {
 
 	@Bean
-	CouchbaseCacheManager cacheManager(CacheProperties cacheProperties, CacheManagerCustomizers customizers,
-			ObjectProvider<CouchbaseCacheManagerBuilderCustomizer> couchbaseCacheManagerBuilderCustomizers,
-			CouchbaseClientFactory clientFactory) {
+	public CouchbaseCacheManager cacheManager(CacheProperties cacheProperties, CacheManagerCustomizers customizers,
+			Bucket bucket) {
 		List<String> cacheNames = cacheProperties.getCacheNames();
-		CouchbaseCacheManagerBuilder builder = CouchbaseCacheManager.builder(clientFactory);
+		CacheBuilder builder = CacheBuilder.newInstance(bucket);
 		Couchbase couchbase = cacheProperties.getCouchbase();
-		org.springframework.data.couchbase.cache.CouchbaseCacheConfiguration config = org.springframework.data.couchbase.cache.CouchbaseCacheConfiguration
-				.defaultCacheConfig();
-		if (couchbase.getExpiration() != null) {
-			config = config.entryExpiry(couchbase.getExpiration());
-		}
-		builder.cacheDefaults(config);
-		if (!ObjectUtils.isEmpty(cacheNames)) {
-			builder.initialCacheNames(new LinkedHashSet<>(cacheNames));
-		}
-		couchbaseCacheManagerBuilderCustomizers.orderedStream().forEach((customizer) -> customizer.customize(builder));
-		CouchbaseCacheManager cacheManager = builder.build();
+		PropertyMapper.get().from(couchbase::getExpiration).whenNonNull().asInt(Duration::getSeconds)
+				.to(builder::withExpiration);
+		String[] names = StringUtils.toStringArray(cacheNames);
+		CouchbaseCacheManager cacheManager = new CouchbaseCacheManager(builder, names);
 		return customizers.customize(cacheManager);
 	}
 

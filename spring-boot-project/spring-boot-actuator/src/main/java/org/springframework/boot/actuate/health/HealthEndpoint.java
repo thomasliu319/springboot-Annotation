@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,12 @@ package org.springframework.boot.actuate.health;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.boot.actuate.endpoint.ApiVersion;
-import org.springframework.boot.actuate.endpoint.EndpointId;
 import org.springframework.boot.actuate.endpoint.SecurityContext;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation;
 import org.springframework.boot.actuate.endpoint.annotation.Selector;
 import org.springframework.boot.actuate.endpoint.annotation.Selector.Match;
+import org.springframework.boot.actuate.endpoint.http.ApiVersion;
 
 /**
  * {@link Endpoint @Endpoint} to expose application health information.
@@ -34,18 +33,23 @@ import org.springframework.boot.actuate.endpoint.annotation.Selector.Match;
  * @author Christian Dupuis
  * @author Andy Wilkinson
  * @author Stephane Nicoll
- * @author Scott Frederick
  * @since 2.0.0
  */
 @Endpoint(id = "health")
 public class HealthEndpoint extends HealthEndpointSupport<HealthContributor, HealthComponent> {
 
-	/**
-	 * Health endpoint id.
-	 */
-	public static final EndpointId ID = EndpointId.of("health");
-
 	private static final String[] EMPTY_PATH = {};
+
+	/**
+	 * Create a new {@link HealthEndpoint} instance that will use the given {@code
+	 * healthIndicator} to generate its response.
+	 * @param healthIndicator the health indicator
+	 * @deprecated since 2.2.0 in favor of
+	 * {@link #HealthEndpoint(HealthContributorRegistry, HealthEndpointGroups)}
+	 */
+	@Deprecated
+	public HealthEndpoint(HealthIndicator healthIndicator) {
+	}
 
 	/**
 	 * Create a new {@link HealthEndpoint} instance.
@@ -68,7 +72,7 @@ public class HealthEndpoint extends HealthEndpointSupport<HealthContributor, Hea
 	}
 
 	private HealthComponent health(ApiVersion apiVersion, String... path) {
-		HealthResult<HealthComponent> result = getHealth(apiVersion, null, SecurityContext.NONE, true, path);
+		HealthResult<HealthComponent> result = getHealth(apiVersion, SecurityContext.NONE, true, path);
 		return (result != null) ? result.getHealth() : null;
 	}
 

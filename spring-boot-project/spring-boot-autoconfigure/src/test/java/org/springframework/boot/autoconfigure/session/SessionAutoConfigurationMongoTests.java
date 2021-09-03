@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +26,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.assertj.AssertableWebApplicationContext;
 import org.springframework.boot.test.context.runner.ContextConsumer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import org.springframework.boot.testsupport.testcontainers.DockerImageNames;
 import org.springframework.session.data.mongo.MongoIndexedSessionRepository;
 import org.springframework.session.data.redis.RedisIndexedSessionRepository;
 import org.springframework.session.hazelcast.HazelcastIndexedSessionRepository;
@@ -48,14 +46,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SessionAutoConfigurationMongoTests extends AbstractSessionAutoConfigurationTests {
 
 	@Container
-	static final MongoDBContainer mongoDB = new MongoDBContainer(DockerImageNames.mongo()).withStartupAttempts(5)
+	static final MongoDBContainer mongoDB = new MongoDBContainer().withStartupAttempts(5)
 			.withStartupTimeout(Duration.ofMinutes(5));
 
 	private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
 			.withConfiguration(AutoConfigurations.of(MongoAutoConfiguration.class, MongoDataAutoConfiguration.class,
 					SessionAutoConfiguration.class))
-			.withPropertyValues("spring.data.mongodb.uri=" + mongoDB.getReplicaSetUrl(),
-					"spring.mongodb.embedded.version=3.5.5");
+			.withPropertyValues("spring.data.mongodb.uri=" + mongoDB.getReplicaSetUrl());
 
 	@Test
 	void defaultConfig() {
@@ -72,12 +69,6 @@ class SessionAutoConfigurationMongoTests extends AbstractSessionAutoConfiguratio
 	}
 
 	@Test
-	void defaultConfigWithCustomTimeout() {
-		this.contextRunner.withPropertyValues("spring.session.store-type=mongodb", "spring.session.timeout=1m")
-				.run(validateSpringSessionUsesMongo("sessions", Duration.ofMinutes(1)));
-	}
-
-	@Test
 	void mongoSessionStoreWithCustomizations() {
 		this.contextRunner
 				.withPropertyValues("spring.session.store-type=mongodb", "spring.session.mongodb.collection-name=foo")
@@ -85,18 +76,10 @@ class SessionAutoConfigurationMongoTests extends AbstractSessionAutoConfiguratio
 	}
 
 	private ContextConsumer<AssertableWebApplicationContext> validateSpringSessionUsesMongo(String collectionName) {
-		return validateSpringSessionUsesMongo(collectionName,
-				new ServerProperties().getServlet().getSession().getTimeout());
-	}
-
-	private ContextConsumer<AssertableWebApplicationContext> validateSpringSessionUsesMongo(String collectionName,
-			Duration timeout) {
 		return (context) -> {
 			MongoIndexedSessionRepository repository = validateSessionRepository(context,
 					MongoIndexedSessionRepository.class);
 			assertThat(repository).hasFieldOrPropertyWithValue("collectionName", collectionName);
-			assertThat(repository).hasFieldOrPropertyWithValue("maxInactiveIntervalInSeconds",
-					(int) timeout.getSeconds());
 		};
 	}
 

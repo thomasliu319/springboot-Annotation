@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ public class FilterRegistrationMappingDescription extends RegistrationMappingDes
 	 * @return the mappings
 	 */
 	public Collection<String> getServletNameMappings() {
-		return getRegistration().getServletNameMappings();
+		return this.getRegistration().getServletNameMappings();
 	}
 
 	/**
@@ -50,7 +50,7 @@ public class FilterRegistrationMappingDescription extends RegistrationMappingDes
 	 * @return the mappings
 	 */
 	public Collection<String> getUrlPatternMappings() {
-		return getRegistration().getUrlPatternMappings();
+		return this.getRegistration().getUrlPatternMappings();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,12 +80,10 @@ public class JooqExceptionTranslator extends DefaultExecuteListener {
 	private void handle(ExecuteContext context, SQLExceptionTranslator translator, SQLException exception) {
 		DataAccessException translated = translate(context, translator, exception);
 		if (exception.getNextException() == null) {
-			if (translated != null) {
-				context.exception(translated);
-			}
+			context.exception(translated);
 		}
 		else {
-			logger.error("Execution of SQL statement failed.", (translated != null) ? translated : exception);
+			logger.error("Execution of SQL statement failed.", translated);
 		}
 	}
 

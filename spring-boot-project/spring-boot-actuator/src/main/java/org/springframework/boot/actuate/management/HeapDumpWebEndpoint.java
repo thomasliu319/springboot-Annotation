@@ -27,8 +27,8 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -100,23 +100,16 @@ public class HeapDumpWebEndpoint {
 		if (this.heapDumper == null) {
 			this.heapDumper = createHeapDumper();
 		}
-		File file = createTempFile();
+		File file = createTempFile(live);
 		this.heapDumper.dumpHeap(file, live);
 		return new TemporaryFileSystemResource(file);
 	}
 
-	private File createTempFile() throws IOException {
-		String date = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm").format(LocalDateTime.now());
-		File file = File.createTempFile("heap-" + date, "." + determineDumpSuffix());
+	private File createTempFile(boolean live) throws IOException {
+		String date = new SimpleDateFormat("yyyy-MM-dd-HH-mm").format(new Date());
+		File file = File.createTempFile("heapdump" + date + (live ? "-live" : ""), ".hprof");
 		file.delete();
 		return file;
-	}
-
-	private String determineDumpSuffix() {
-		if (this.heapDumper instanceof OpenJ9DiagnosticsMXBeanHeapDumper) {
-			return "phd";
-		}
-		return "hprof";
 	}
 
 	/**
@@ -125,12 +118,7 @@ public class HeapDumpWebEndpoint {
 	 * @throws HeapDumperUnavailableException if the heap dumper cannot be created
 	 */
 	protected HeapDumper createHeapDumper() throws HeapDumperUnavailableException {
-		try {
-			return new HotSpotDiagnosticMXBeanHeapDumper();
-		}
-		catch (HeapDumperUnavailableException ex) {
-			return new OpenJ9DiagnosticsMXBeanHeapDumper();
-		}
+		return new HotSpotDiagnosticMXBeanHeapDumper();
 	}
 
 	/**
@@ -152,8 +140,8 @@ public class HeapDumpWebEndpoint {
 	}
 
 	/**
-	 * {@link HeapDumper} that uses {@code com.sun.management.HotSpotDiagnosticMXBean},
-	 * available on Oracle and OpenJDK, to dump the heap to a file.
+	 * {@link HeapDumper} that uses {@code com.sun.management.HotSpotDiagnosticMXBean}
+	 * available on Oracle and OpenJDK to dump the heap to a file.
 	 */
 	protected static class HotSpotDiagnosticMXBeanHeapDumper implements HeapDumper {
 
@@ -179,38 +167,6 @@ public class HeapDumpWebEndpoint {
 		@Override
 		public void dumpHeap(File file, boolean live) {
 			ReflectionUtils.invokeMethod(this.dumpHeapMethod, this.diagnosticMXBean, file.getAbsolutePath(), live);
-		}
-
-	}
-
-	/**
-	 * {@link HeapDumper} that uses
-	 * {@code openj9.lang.management.OpenJ9DiagnosticsMXBean}, available on OpenJ9, to
-	 * dump the heap to a file.
-	 */
-	private static final class OpenJ9DiagnosticsMXBeanHeapDumper implements HeapDumper {
-
-		private Object diagnosticMXBean;
-
-		private Method dumpHeapMethod;
-
-		@SuppressWarnings("unchecked")
-		private OpenJ9DiagnosticsMXBeanHeapDumper() {
-			try {
-				Class<?> mxBeanClass = ClassUtils.resolveClassName("openj9.lang.management.OpenJ9DiagnosticsMXBean",
-						null);
-				this.diagnosticMXBean = ManagementFactory.getPlatformMXBean((Class<PlatformManagedObject>) mxBeanClass);
-				this.dumpHeapMethod = ReflectionUtils.findMethod(mxBeanClass, "triggerDumpToFile", String.class,
-						String.class);
-			}
-			catch (Throwable ex) {
-				throw new HeapDumperUnavailableException("Unable to locate OpenJ9DiagnosticsMXBean", ex);
-			}
-		}
-
-		@Override
-		public void dumpHeap(File file, boolean live) throws IOException, InterruptedException {
-			ReflectionUtils.invokeMethod(this.dumpHeapMethod, this.diagnosticMXBean, "heap", file.getAbsolutePath());
 		}
 
 	}

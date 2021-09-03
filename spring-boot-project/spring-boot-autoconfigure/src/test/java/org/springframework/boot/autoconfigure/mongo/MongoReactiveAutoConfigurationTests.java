@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import com.mongodb.connection.StreamFactory;
 import com.mongodb.connection.StreamFactoryFactory;
 import com.mongodb.connection.netty.NettyStreamFactoryFactory;
 import com.mongodb.reactivestreams.client.MongoClient;
-import com.mongodb.reactivestreams.client.internal.MongoClientImpl;
 import io.netty.channel.EventLoopGroup;
 import org.junit.jupiter.api.Test;
 
@@ -59,25 +58,25 @@ class MongoReactiveAutoConfigurationTests {
 	}
 
 	@Test
-	void settingsAdded() {
+	void optionsAdded() {
 		this.contextRunner.withPropertyValues("spring.data.mongodb.host:localhost")
-				.withUserConfiguration(SettingsConfig.class)
+				.withUserConfiguration(OptionsConfig.class)
 				.run((context) -> assertThat(getSettings(context).getSocketSettings().getReadTimeout(TimeUnit.SECONDS))
 						.isEqualTo(300));
 	}
 
 	@Test
-	void settingsAddedButNoHost() {
+	void optionsAddedButNoHost() {
 		this.contextRunner.withPropertyValues("spring.data.mongodb.uri:mongodb://localhost/test")
-				.withUserConfiguration(SettingsConfig.class)
+				.withUserConfiguration(OptionsConfig.class)
 				.run((context) -> assertThat(getSettings(context).getReadPreference())
 						.isEqualTo(ReadPreference.nearest()));
 	}
 
 	@Test
-	void settingsSslConfig() {
+	void optionsSslConfig() {
 		this.contextRunner.withPropertyValues("spring.data.mongodb.uri:mongodb://localhost/test")
-				.withUserConfiguration(SslSettingsConfig.class).run((context) -> {
+				.withUserConfiguration(SslOptionsConfig.class).run((context) -> {
 					assertThat(context).hasSingleBean(MongoClient.class);
 					MongoClientSettings settings = getSettings(context);
 					assertThat(settings.getApplicationName()).isEqualTo("test-config");
@@ -111,13 +110,14 @@ class MongoReactiveAutoConfigurationTests {
 				});
 	}
 
+	@SuppressWarnings("deprecation")
 	private MongoClientSettings getSettings(ApplicationContext context) {
-		MongoClientImpl client = (MongoClientImpl) context.getBean(MongoClient.class);
-		return client.getSettings();
+		MongoClient client = context.getBean(MongoClient.class);
+		return (MongoClientSettings) ReflectionTestUtils.getField(client.getSettings(), "wrapped");
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	static class SettingsConfig {
+	static class OptionsConfig {
 
 		@Bean
 		MongoClientSettings mongoClientSettings() {
@@ -128,7 +128,7 @@ class MongoReactiveAutoConfigurationTests {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	static class SslSettingsConfig {
+	static class SslOptionsConfig {
 
 		@Bean
 		MongoClientSettings mongoClientSettings(StreamFactoryFactory streamFactoryFactory) {

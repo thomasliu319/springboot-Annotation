@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.boot.autoconfigure.template.TemplateAvailabilityProvider;
 import org.springframework.boot.autoconfigure.template.TemplateAvailabilityProviders;
-import org.springframework.boot.autoconfigure.web.WebProperties.Resources;
+import org.springframework.boot.autoconfigure.web.ResourceProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.Resource;
@@ -68,7 +68,7 @@ public class DefaultErrorViewResolver implements ErrorViewResolver, Ordered {
 
 	private ApplicationContext applicationContext;
 
-	private final Resources resources;
+	private final ResourceProperties resourceProperties;
 
 	private final TemplateAvailabilityProviders templateAvailabilityProviders;
 
@@ -77,23 +77,22 @@ public class DefaultErrorViewResolver implements ErrorViewResolver, Ordered {
 	/**
 	 * Create a new {@link DefaultErrorViewResolver} instance.
 	 * @param applicationContext the source application context
-	 * @param resources resource properties
-	 * @since 2.4.0
+	 * @param resourceProperties resource properties
 	 */
-	public DefaultErrorViewResolver(ApplicationContext applicationContext, Resources resources) {
+	public DefaultErrorViewResolver(ApplicationContext applicationContext, ResourceProperties resourceProperties) {
 		Assert.notNull(applicationContext, "ApplicationContext must not be null");
-		Assert.notNull(resources, "Resources must not be null");
+		Assert.notNull(resourceProperties, "ResourceProperties must not be null");
 		this.applicationContext = applicationContext;
-		this.resources = resources;
+		this.resourceProperties = resourceProperties;
 		this.templateAvailabilityProviders = new TemplateAvailabilityProviders(applicationContext);
 	}
 
-	DefaultErrorViewResolver(ApplicationContext applicationContext, Resources resourceProperties,
+	DefaultErrorViewResolver(ApplicationContext applicationContext, ResourceProperties resourceProperties,
 			TemplateAvailabilityProviders templateAvailabilityProviders) {
 		Assert.notNull(applicationContext, "ApplicationContext must not be null");
-		Assert.notNull(resourceProperties, "Resources must not be null");
+		Assert.notNull(resourceProperties, "ResourceProperties must not be null");
 		this.applicationContext = applicationContext;
-		this.resources = resourceProperties;
+		this.resourceProperties = resourceProperties;
 		this.templateAvailabilityProviders = templateAvailabilityProviders;
 	}
 
@@ -117,7 +116,7 @@ public class DefaultErrorViewResolver implements ErrorViewResolver, Ordered {
 	}
 
 	private ModelAndView resolveResource(String viewName, Map<String, Object> model) {
-		for (String location : this.resources.getStaticLocations()) {
+		for (String location : this.resourceProperties.getStaticLocations()) {
 			try {
 				Resource resource = this.applicationContext.getResource(location);
 				resource = resource.createRelative(viewName + ".html");

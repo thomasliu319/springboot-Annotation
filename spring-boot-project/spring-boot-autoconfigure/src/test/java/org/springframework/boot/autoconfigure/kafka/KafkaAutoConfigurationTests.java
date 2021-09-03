@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.Properties;
 
 import javax.security.auth.login.AppConfigurationEntry;
 
-import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -36,13 +35,13 @@ import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.config.AbstractKafkaListenerContainerFactory;
@@ -50,28 +49,28 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
-import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.RecordInterceptor;
-import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.listener.SeekToCurrentBatchErrorHandler;
+import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.kafka.transaction.ChainedKafkaTransactionManager;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
@@ -107,7 +106,6 @@ class KafkaAutoConfigurationTests {
 				"spring.kafka.consumer.properties.fiz.buz=fix.fox", "spring.kafka.consumer.fetch-min-size=1KB",
 				"spring.kafka.consumer.group-id=bar", "spring.kafka.consumer.heartbeat-interval=234",
 				"spring.kafka.consumer.isolation-level = read-committed",
-				"spring.kafka.consumer.security.protocol = SSL",
 				"spring.kafka.consumer.key-deserializer = org.apache.kafka.common.serialization.LongDeserializer",
 				"spring.kafka.consumer.value-deserializer = org.apache.kafka.common.serialization.IntegerDeserializer")
 				.run((context) -> {
@@ -139,7 +137,6 @@ class KafkaAutoConfigurationTests {
 					assertThat(configs.get(ConsumerConfig.ISOLATION_LEVEL_CONFIG)).isEqualTo("read_committed");
 					assertThat(configs.get(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG))
 							.isEqualTo(LongDeserializer.class);
-					assertThat(configs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("SSL");
 					assertThat(configs.get(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG))
 							.isEqualTo(IntegerDeserializer.class);
 					assertThat(configs.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(42);
@@ -159,7 +156,7 @@ class KafkaAutoConfigurationTests {
 				"spring.kafka.producer.buffer-memory=4KB", "spring.kafka.producer.compression-type=gzip",
 				"spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.LongSerializer",
 				"spring.kafka.producer.retries=2", "spring.kafka.producer.properties.fiz.buz=fix.fox",
-				"spring.kafka.producer.security.protocol=SSL", "spring.kafka.producer.ssl.key-password=p4",
+				"spring.kafka.producer.ssl.key-password=p4",
 				"spring.kafka.producer.ssl.key-store-location=classpath:ksLocP",
 				"spring.kafka.producer.ssl.key-store-password=p5", "spring.kafka.producer.ssl.key-store-type=PKCS12",
 				"spring.kafka.producer.ssl.trust-store-location=classpath:tsLocP",
@@ -180,7 +177,6 @@ class KafkaAutoConfigurationTests {
 					assertThat(configs.get(ProducerConfig.BUFFER_MEMORY_CONFIG)).isEqualTo(4096L);
 					assertThat(configs.get(ProducerConfig.COMPRESSION_TYPE_CONFIG)).isEqualTo("gzip");
 					assertThat(configs.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(LongSerializer.class);
-					assertThat(configs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("SSL");
 					assertThat(configs.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG)).isEqualTo("p4");
 					assertThat((String) configs.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG))
 							.endsWith(File.separator + "ksLocP");
@@ -206,7 +202,7 @@ class KafkaAutoConfigurationTests {
 		this.contextRunner
 				.withPropertyValues("spring.kafka.clientId=cid", "spring.kafka.properties.foo.bar.baz=qux.fiz.buz",
 						"spring.kafka.admin.fail-fast=true", "spring.kafka.admin.properties.fiz.buz=fix.fox",
-						"spring.kafka.admin.security.protocol=SSL", "spring.kafka.admin.ssl.key-password=p4",
+						"spring.kafka.admin.ssl.key-password=p4",
 						"spring.kafka.admin.ssl.key-store-location=classpath:ksLocP",
 						"spring.kafka.admin.ssl.key-store-password=p5", "spring.kafka.admin.ssl.key-store-type=PKCS12",
 						"spring.kafka.admin.ssl.trust-store-location=classpath:tsLocP",
@@ -214,11 +210,10 @@ class KafkaAutoConfigurationTests {
 						"spring.kafka.admin.ssl.trust-store-type=PKCS12", "spring.kafka.admin.ssl.protocol=TLSv1.2")
 				.run((context) -> {
 					KafkaAdmin admin = context.getBean(KafkaAdmin.class);
-					Map<String, Object> configs = admin.getConfigurationProperties();
+					Map<String, Object> configs = admin.getConfig();
 					// common
 					assertThat(configs.get(AdminClientConfig.CLIENT_ID_CONFIG)).isEqualTo("cid");
 					// admin
-					assertThat(configs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("SSL");
 					assertThat(configs.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG)).isEqualTo("p4");
 					assertThat((String) configs.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG))
 							.endsWith(File.separator + "ksLocP");
@@ -245,7 +240,7 @@ class KafkaAutoConfigurationTests {
 				"spring.kafka.streams.auto-startup=false", "spring.kafka.streams.cache-max-size-buffering=1KB",
 				"spring.kafka.streams.client-id=override", "spring.kafka.streams.properties.fiz.buz=fix.fox",
 				"spring.kafka.streams.replication-factor=2", "spring.kafka.streams.state-dir=/tmp/state",
-				"spring.kafka.streams.security.protocol=SSL", "spring.kafka.streams.ssl.key-password=p7",
+				"spring.kafka.streams.ssl.key-password=p7",
 				"spring.kafka.streams.ssl.key-store-location=classpath:ksLocP",
 				"spring.kafka.streams.ssl.key-store-password=p8", "spring.kafka.streams.ssl.key-store-type=PKCS12",
 				"spring.kafka.streams.ssl.trust-store-location=classpath:tsLocP",
@@ -260,7 +255,6 @@ class KafkaAutoConfigurationTests {
 					assertThat(configs.get(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG)).isEqualTo(1024);
 					assertThat(configs.get(StreamsConfig.CLIENT_ID_CONFIG)).isEqualTo("override");
 					assertThat(configs.get(StreamsConfig.REPLICATION_FACTOR_CONFIG)).isEqualTo(2);
-					assertThat(configs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("SSL");
 					assertThat(configs.get(StreamsConfig.STATE_DIR_CONFIG)).isEqualTo("/tmp/state");
 					assertThat(configs.get(SslConfigs.SSL_KEY_PASSWORD_CONFIG)).isEqualTo("p7");
 					assertThat((String) configs.get(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG))
@@ -340,26 +334,6 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Test
-	void streamsWithCleanupConfig() {
-		this.contextRunner
-				.withUserConfiguration(EnableKafkaStreamsConfiguration.class, TestKafkaStreamsConfiguration.class)
-				.withPropertyValues("spring.application.name=my-test-app",
-						"spring.kafka.bootstrap-servers=localhost:9092,localhost:9093",
-						"spring.kafka.streams.auto-startup=false", "spring.kafka.streams.cleanup.on-startup=true",
-						"spring.kafka.streams.cleanup.on-shutdown=false")
-				.run((context) -> {
-					StreamsBuilderFactoryBean streamsBuilderFactoryBean = context
-							.getBean(StreamsBuilderFactoryBean.class);
-					assertThat(streamsBuilderFactoryBean)
-							.extracting("cleanupConfig", InstanceOfAssertFactories.type(CleanupConfig.class))
-							.satisfies((cleanupConfig) -> {
-								assertThat(cleanupConfig.cleanupOnStart()).isTrue();
-								assertThat(cleanupConfig.cleanupOnStop()).isFalse();
-							});
-				});
-	}
-
-	@Test
 	void streamsApplicationIdIsMandatory() {
 		this.contextRunner.withUserConfiguration(EnableKafkaStreamsConfiguration.class).run((context) -> {
 			assertThat(context).hasFailed();
@@ -387,9 +361,8 @@ class KafkaAutoConfigurationTests {
 						"spring.kafka.listener.ack-count=123", "spring.kafka.listener.ack-time=456",
 						"spring.kafka.listener.concurrency=3", "spring.kafka.listener.poll-timeout=2000",
 						"spring.kafka.listener.no-poll-threshold=2.5", "spring.kafka.listener.type=batch",
-						"spring.kafka.listener.idle-between-polls=1s", "spring.kafka.listener.idle-event-interval=1s",
-						"spring.kafka.listener.monitor-interval=45", "spring.kafka.listener.log-container-config=true",
-						"spring.kafka.listener.only-log-record-metadata=true",
+						"spring.kafka.listener.idle-event-interval=1s", "spring.kafka.listener.monitor-interval=45",
+						"spring.kafka.listener.log-container-config=true",
 						"spring.kafka.listener.missing-topics-fatal=true", "spring.kafka.jaas.enabled=true",
 						"spring.kafka.producer.transaction-id-prefix=foo", "spring.kafka.jaas.login-module=foo",
 						"spring.kafka.jaas.control-flag=REQUISITE", "spring.kafka.jaas.options.useKeyTab=true")
@@ -412,13 +385,11 @@ class KafkaAutoConfigurationTests {
 					assertThat(containerProperties.getAckTime()).isEqualTo(456L);
 					assertThat(containerProperties.getPollTimeout()).isEqualTo(2000L);
 					assertThat(containerProperties.getNoPollThreshold()).isEqualTo(2.5f);
-					assertThat(containerProperties.getIdleBetweenPolls()).isEqualTo(1000L);
 					assertThat(containerProperties.getIdleEventInterval()).isEqualTo(1000L);
 					assertThat(containerProperties.getMonitorInterval()).isEqualTo(45);
 					assertThat(containerProperties.isLogContainerConfig()).isTrue();
-					assertThat(containerProperties.isOnlyLogRecordMetadata()).isTrue();
 					assertThat(containerProperties.isMissingTopicsFatal()).isTrue();
-					assertThat(kafkaListenerContainerFactory).extracting("concurrency").isEqualTo(3);
+					assertThat(ReflectionTestUtils.getField(kafkaListenerContainerFactory, "concurrency")).isEqualTo(3);
 					assertThat(kafkaListenerContainerFactory.isBatchListener()).isTrue();
 					assertThat(context.getBeansOfType(KafkaJaasLoginModuleInitializer.class)).hasSize(1);
 					KafkaJaasLoginModuleInitializer jaas = context.getBean(KafkaJaasLoginModuleInitializer.class);
@@ -488,37 +459,17 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Test
-	void testConcurrentKafkaListenerContainerFactoryWithDefaultRecordFilterStrategy() {
-		this.contextRunner.run((context) -> {
-			ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
-					.getBean(ConcurrentKafkaListenerContainerFactory.class);
-			assertThat(factory).hasFieldOrPropertyWithValue("recordFilterStrategy", null);
-		});
-	}
-
-	@Test
-	void testConcurrentKafkaListenerContainerFactoryWithCustomRecordFilterStrategy() {
-		this.contextRunner.withUserConfiguration(RecordFilterStrategyConfiguration.class).run((context) -> {
-			ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
-					.getBean(ConcurrentKafkaListenerContainerFactory.class);
-			assertThat(factory).hasFieldOrPropertyWithValue("recordFilterStrategy",
-					context.getBean("recordFilterStrategy"));
-		});
-	}
-
-	@Test
 	void testConcurrentKafkaListenerContainerFactoryWithCustomErrorHandler() {
-		this.contextRunner.withBean("errorHandler", ErrorHandler.class, () -> mock(ErrorHandler.class))
-				.run((context) -> {
-					ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
-							.getBean(ConcurrentKafkaListenerContainerFactory.class);
-					assertThat(factory).hasFieldOrPropertyWithValue("errorHandler", context.getBean("errorHandler"));
-				});
+		this.contextRunner.withUserConfiguration(ErrorHandlerConfiguration.class).run((context) -> {
+			ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
+					.getBean(ConcurrentKafkaListenerContainerFactory.class);
+			assertThat(factory).hasFieldOrPropertyWithValue("errorHandler", context.getBean("errorHandler"));
+		});
 	}
 
 	@Test
 	void concurrentKafkaListenerContainerFactoryInBatchModeShouldUseBatchErrorHandler() {
-		this.contextRunner.withBean("batchErrorHandler", BatchErrorHandler.class, () -> mock(BatchErrorHandler.class))
+		this.contextRunner.withUserConfiguration(BatchErrorHandlerConfiguration.class)
 				.withPropertyValues("spring.kafka.listener.type=batch").run((context) -> {
 					ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
 							.getBean(ConcurrentKafkaListenerContainerFactory.class);
@@ -539,7 +490,7 @@ class KafkaAutoConfigurationTests {
 	@Test
 	void concurrentKafkaListenerContainerFactoryInBatchModeAndSimpleErrorHandlerShouldBeNull() {
 		this.contextRunner.withPropertyValues("spring.kafka.listener.type=batch")
-				.withBean("errorHandler", ErrorHandler.class, () -> mock(ErrorHandler.class)).run((context) -> {
+				.withUserConfiguration(ErrorHandlerConfiguration.class).run((context) -> {
 					ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
 							.getBean(ConcurrentKafkaListenerContainerFactory.class);
 					assertThat(factory).hasFieldOrPropertyWithValue("errorHandler", null);
@@ -558,16 +509,13 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	void testConcurrentKafkaListenerContainerFactoryWithCustomTransactionManager() {
-		KafkaTransactionManager<Object, Object> customTransactionManager = mock(KafkaTransactionManager.class);
-		this.contextRunner
-				.withBean("customTransactionManager", KafkaTransactionManager.class, () -> customTransactionManager)
+		this.contextRunner.withUserConfiguration(TransactionManagerConfiguration.class)
 				.withPropertyValues("spring.kafka.producer.transaction-id-prefix=test").run((context) -> {
 					ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
 							.getBean(ConcurrentKafkaListenerContainerFactory.class);
 					assertThat(factory.getContainerProperties().getTransactionManager())
-							.isSameAs(context.getBean("customTransactionManager"));
+							.isSameAs(context.getBean("chainedTransactionManager"));
 				});
 	}
 
@@ -620,20 +568,6 @@ class KafkaAutoConfigurationTests {
 		});
 	}
 
-	@Test
-	void specificSecurityProtocolOverridesCommonSecurityProtocol() {
-		this.contextRunner.withPropertyValues("spring.kafka.security.protocol=SSL",
-				"spring.kafka.admin.security.protocol=PLAINTEXT").run((context) -> {
-					DefaultKafkaProducerFactory<?, ?> producerFactory = context
-							.getBean(DefaultKafkaProducerFactory.class);
-					Map<String, Object> producerConfigs = producerFactory.getConfigurationProperties();
-					assertThat(producerConfigs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("SSL");
-					KafkaAdmin admin = context.getBean(KafkaAdmin.class);
-					Map<String, Object> configs = admin.getConfigurationProperties();
-					assertThat(configs.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)).isEqualTo("PLAINTEXT");
-				});
-	}
-
 	@Configuration(proxyBeanMethods = false)
 	static class MessageConverterConfiguration {
 
@@ -655,11 +589,33 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	static class RecordFilterStrategyConfiguration {
+	static class ErrorHandlerConfiguration {
 
 		@Bean
-		RecordFilterStrategy<Object, Object> recordFilterStrategy() {
-			return (record) -> false;
+		SeekToCurrentErrorHandler errorHandler() {
+			return new SeekToCurrentErrorHandler();
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class BatchErrorHandlerConfiguration {
+
+		@Bean
+		SeekToCurrentBatchErrorHandler batchErrorHandler() {
+			return new SeekToCurrentBatchErrorHandler();
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class TransactionManagerConfiguration {
+
+		@Bean
+		@Primary
+		PlatformTransactionManager chainedTransactionManager(
+				KafkaTransactionManager<String, String> kafkaTransactionManager) {
+			return new ChainedKafkaTransactionManager<String, String>(kafkaTransactionManager);
 		}
 
 	}
@@ -669,7 +625,7 @@ class KafkaAutoConfigurationTests {
 
 		@Bean
 		AfterRollbackProcessor<Object, Object> afterRollbackProcessor() {
-			return (records, consumer, container, ex, recoverable, eosMode) -> {
+			return (records, consumer, ex, recoverable) -> {
 				// no-op
 			};
 		}
@@ -679,7 +635,6 @@ class KafkaAutoConfigurationTests {
 	@Configuration(proxyBeanMethods = false)
 	static class ConsumerFactoryConfiguration {
 
-		@SuppressWarnings("unchecked")
 		private final ConsumerFactory<String, Object> consumerFactory = mock(ConsumerFactory.class);
 
 		@Bean

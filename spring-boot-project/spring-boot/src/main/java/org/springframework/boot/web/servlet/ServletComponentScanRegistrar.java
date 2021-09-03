@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
 package org.springframework.boot.web.servlet;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.ConstructorArgumentValues.ValueHolder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -53,15 +52,20 @@ class ServletComponentScanRegistrar implements ImportBeanDefinitionRegistrar {
 	}
 
 	private void updatePostProcessor(BeanDefinitionRegistry registry, Set<String> packagesToScan) {
-		ServletComponentRegisteringPostProcessorBeanDefinition definition = (ServletComponentRegisteringPostProcessorBeanDefinition) registry
-				.getBeanDefinition(BEAN_NAME);
-		definition.addPackageNames(packagesToScan);
+		BeanDefinition definition = registry.getBeanDefinition(BEAN_NAME);
+		ValueHolder constructorArguments = definition.getConstructorArgumentValues().getGenericArgumentValue(Set.class);
+		@SuppressWarnings("unchecked")
+		Set<String> mergedPackages = (Set<String>) constructorArguments.getValue();
+		mergedPackages.addAll(packagesToScan);
+		constructorArguments.setValue(mergedPackages);
 	}
 
 	private void addPostProcessor(BeanDefinitionRegistry registry, Set<String> packagesToScan) {
-		ServletComponentRegisteringPostProcessorBeanDefinition definition = new ServletComponentRegisteringPostProcessorBeanDefinition(
-				packagesToScan);
-		registry.registerBeanDefinition(BEAN_NAME, definition);
+		GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+		beanDefinition.setBeanClass(ServletComponentRegisteringPostProcessor.class);
+		beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(packagesToScan);
+		beanDefinition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+		registry.registerBeanDefinition(BEAN_NAME, beanDefinition);
 	}
 
 	private Set<String> getPackagesToScan(AnnotationMetadata metadata) {
@@ -77,27 +81,6 @@ class ServletComponentScanRegistrar implements ImportBeanDefinitionRegistrar {
 			packagesToScan.add(ClassUtils.getPackageName(metadata.getClassName()));
 		}
 		return packagesToScan;
-	}
-
-	static final class ServletComponentRegisteringPostProcessorBeanDefinition extends GenericBeanDefinition {
-
-		private Set<String> packageNames = new LinkedHashSet<>();
-
-		ServletComponentRegisteringPostProcessorBeanDefinition(Collection<String> packageNames) {
-			setBeanClass(ServletComponentRegisteringPostProcessor.class);
-			setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-			addPackageNames(packageNames);
-		}
-
-		@Override
-		public Supplier<?> getInstanceSupplier() {
-			return () -> new ServletComponentRegisteringPostProcessor(this.packageNames);
-		}
-
-		private void addPackageNames(Collection<String> additionalPackageNames) {
-			this.packageNames.addAll(additionalPackageNames);
-		}
-
 	}
 
 }

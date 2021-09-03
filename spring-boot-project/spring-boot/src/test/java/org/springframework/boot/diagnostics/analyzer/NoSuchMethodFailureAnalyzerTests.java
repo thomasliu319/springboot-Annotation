@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,14 @@
 
 package org.springframework.boot.diagnostics.analyzer;
 
-import java.util.List;
-
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServlet;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.diagnostics.FailureAnalysis;
-import org.springframework.boot.diagnostics.analyzer.NoSuchMethodFailureAnalyzer.ClassDescriptor;
 import org.springframework.boot.diagnostics.analyzer.NoSuchMethodFailureAnalyzer.NoSuchMethodDescriptor;
 import org.springframework.boot.testsupport.classpath.ClassPathOverrides;
-import org.springframework.data.r2dbc.mapping.R2dbcMappingContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -37,10 +33,8 @@ import static org.mockito.Mockito.mock;
  *
  * @author Andy Wilkinson
  * @author Stephane Nicoll
- * @author Scott Frederick
  */
-@ClassPathOverrides({ "javax.servlet:servlet-api:2.5",
-		"org.springframework.data:spring-data-relational:1.1.7.RELEASE" })
+@ClassPathOverrides("javax.servlet:servlet-api:2.5")
 class NoSuchMethodFailureAnalyzerTests {
 
 	@Test
@@ -54,9 +48,7 @@ class NoSuchMethodFailureAnalyzerTests {
 						+ "Ljavax/servlet/ServletRegistration$Dynamic;");
 		assertThat(descriptor.getClassName()).isEqualTo("javax.servlet.ServletContext");
 		assertThat(descriptor.getCandidateLocations().size()).isGreaterThan(1);
-		List<ClassDescriptor> typeHierarchy = descriptor.getTypeHierarchy();
-		assertThat(typeHierarchy).hasSize(1);
-		assertThat(typeHierarchy.get(0).getLocation()).asString().contains("servlet-api-2.5.jar");
+		assertThat(descriptor.getActualLocation()).asString().contains("servlet-api-2.5.jar");
 	}
 
 	@Test
@@ -70,9 +62,7 @@ class NoSuchMethodFailureAnalyzerTests {
 						+ "Ljavax/servlet/ServletRegistration$Dynamic;");
 		assertThat(descriptor.getClassName()).isEqualTo("javax.servlet.ServletContext");
 		assertThat(descriptor.getCandidateLocations().size()).isGreaterThan(1);
-		List<ClassDescriptor> typeHierarchy = descriptor.getTypeHierarchy();
-		assertThat(typeHierarchy).hasSize(1);
-		assertThat(typeHierarchy.get(0).getLocation()).asString().contains("servlet-api-2.5.jar");
+		assertThat(descriptor.getActualLocation()).asString().contains("servlet-api-2.5.jar");
 	}
 
 	@Test
@@ -86,39 +76,18 @@ class NoSuchMethodFailureAnalyzerTests {
 						+ "java.lang.String, javax.servlet.Servlet)'");
 		assertThat(descriptor.getClassName()).isEqualTo("javax.servlet.ServletContext");
 		assertThat(descriptor.getCandidateLocations().size()).isGreaterThan(1);
-		List<ClassDescriptor> typeHierarchy = descriptor.getTypeHierarchy();
-		assertThat(typeHierarchy).hasSize(1);
-		assertThat(typeHierarchy.get(0).getLocation()).asString().contains("servlet-api-2.5.jar");
+		assertThat(descriptor.getActualLocation()).asString().contains("servlet-api-2.5.jar");
 	}
 
 	@Test
-	void whenAMethodOnAnInterfaceIsMissingThenNoSuchMethodErrorIsAnalyzed() {
+	void noSuchMethodErrorIsAnalyzed() {
 		Throwable failure = createFailure();
 		assertThat(failure).isNotNull();
 		FailureAnalysis analysis = new NoSuchMethodFailureAnalyzer().analyze(failure);
 		assertThat(analysis).isNotNull();
 		assertThat(analysis.getDescription())
 				.contains(NoSuchMethodFailureAnalyzerTests.class.getName() + ".createFailure(").contains("addServlet(")
-				.contains("calling method's class, " + NoSuchMethodFailureAnalyzerTests.class.getName() + ",")
-				.contains("called method's class, javax.servlet.ServletContext,");
-		assertThat(analysis.getAction()).contains(NoSuchMethodFailureAnalyzerTests.class.getName())
-				.contains("javax.servlet.ServletContext");
-	}
-
-	@Test
-	void whenAnInheritedMethodIsMissingThenNoSuchMethodErrorIsAnalyzed() {
-		Throwable failure = createFailureForMissingInheritedMethod();
-		assertThat(failure).isNotNull();
-		FailureAnalysis analysis = new NoSuchMethodFailureAnalyzer().analyze(failure);
-		assertThat(analysis).isNotNull();
-		assertThat(analysis.getDescription()).contains(R2dbcMappingContext.class.getName() + ".<init>(")
-				.contains(R2dbcMappingContext.class.getName() + ".setForceQuote(")
-				.contains("calling method's class, org.springframework.data.r2dbc.mapping.R2dbcMappingContext,")
-				.contains("called method's class, org.springframework.data.r2dbc.mapping.R2dbcMappingContext,")
-				.contains("    org.springframework.data.r2dbc.mapping.R2dbcMappingContext")
-				.contains("    org.springframework.data.relational.core.mapping.RelationalMappingContext")
-				.contains("    org.springframework.data.mapping.context.AbstractMappingContext");
-		assertThat(analysis.getAction()).contains("org.springframework.data.r2dbc.mapping.R2dbcMappingContext");
+				.contains("class, javax.servlet.ServletContext,");
 	}
 
 	private Throwable createFailure() {
@@ -126,16 +95,6 @@ class NoSuchMethodFailureAnalyzerTests {
 			ServletContext servletContext = mock(ServletContext.class);
 			servletContext.addServlet("example", new HttpServlet() {
 			});
-			return null;
-		}
-		catch (Throwable ex) {
-			return ex;
-		}
-	}
-
-	private Throwable createFailureForMissingInheritedMethod() {
-		try {
-			new R2dbcMappingContext();
 			return null;
 		}
 		catch (Throwable ex) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.boot.autoconfigure.web.ServerProperties.ForwardHeadersStrategy;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
@@ -55,8 +54,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Stephane Nicoll
  * @author Andrew McGhie
  * @author Rafiullah Hamedy
- * @author Victor Mandujano
- * @author Parviz Rozikov
  */
 class TomcatWebServerFactoryCustomizerTests {
 
@@ -99,29 +96,6 @@ class TomcatWebServerFactoryCustomizerTests {
 	}
 
 	@Test
-	void customKeepAliveTimeout() {
-		bind("server.tomcat.keep-alive-timeout=30ms");
-		customizeAndRunServer((server) -> assertThat(
-				((AbstractProtocol<?>) server.getTomcat().getConnector().getProtocolHandler()).getKeepAliveTimeout())
-						.isEqualTo(30));
-	}
-
-	@Test
-	void customMaxKeepAliveRequests() {
-		bind("server.tomcat.max-keep-alive-requests=-1");
-		customizeAndRunServer((server) -> assertThat(
-				((AbstractHttp11Protocol<?>) server.getTomcat().getConnector().getProtocolHandler())
-						.getMaxKeepAliveRequests()).isEqualTo(-1));
-	}
-
-	@Test
-	void defaultMaxKeepAliveRequests() {
-		customizeAndRunServer((server) -> assertThat(
-				((AbstractHttp11Protocol<?>) server.getTomcat().getConnector().getProtocolHandler())
-						.getMaxKeepAliveRequests()).isEqualTo(100));
-	}
-
-	@Test
 	void unlimitedProcessorCache() {
 		bind("server.tomcat.processor-cache=-1");
 		customizeAndRunServer((server) -> assertThat(
@@ -137,6 +111,12 @@ class TomcatWebServerFactoryCustomizerTests {
 	}
 
 	@Test
+	void customDisableMaxHttpPostSize() {
+		bind("server.tomcat.max-http-post-size=-1");
+		customizeAndRunServer((server) -> assertThat(server.getTomcat().getConnector().getMaxPostSize()).isEqualTo(-1));
+	}
+
+	@Test
 	void customDisableMaxHttpFormPostSize() {
 		bind("server.tomcat.max-http-form-post-size=-1");
 		customizeAndRunServer((server) -> assertThat(server.getTomcat().getConnector().getMaxPostSize()).isEqualTo(-1));
@@ -148,6 +128,13 @@ class TomcatWebServerFactoryCustomizerTests {
 		customizeAndRunServer((server) -> assertThat(
 				((AbstractProtocol<?>) server.getTomcat().getConnector().getProtocolHandler()).getMaxConnections())
 						.isEqualTo(5));
+	}
+
+	@Test
+	void customMaxHttpPostSize() {
+		bind("server.tomcat.max-http-post-size=10000");
+		customizeAndRunServer(
+				(server) -> assertThat(server.getTomcat().getConnector().getMaxPostSize()).isEqualTo(10000));
 	}
 
 	@Test
@@ -191,12 +178,9 @@ class TomcatWebServerFactoryCustomizerTests {
 
 	@Test
 	void customRemoteIpValve() {
-		bind("server.tomcat.remoteip.remote-ip-header=x-my-remote-ip-header",
-				"server.tomcat.remoteip.protocol-header=x-my-protocol-header",
-				"server.tomcat.remoteip.internal-proxies=192.168.0.1",
-				"server.tomcat.remoteip.host-header=x-my-forward-host",
-				"server.tomcat.remoteip.port-header=x-my-forward-port",
-				"server.tomcat.remoteip.protocol-header-https-value=On");
+		bind("server.tomcat.remote-ip-header=x-my-remote-ip-header",
+				"server.tomcat.protocol-header=x-my-protocol-header", "server.tomcat.internal-proxies=192.168.0.1",
+				"server.tomcat.port-header=x-my-forward-port", "server.tomcat.protocol-header-https-value=On");
 		TomcatServletWebServerFactory factory = customizeAndGetFactory();
 		assertThat(factory.getEngineValves()).hasSize(1);
 		Valve valve = factory.getEngineValves().iterator().next();
@@ -205,7 +189,6 @@ class TomcatWebServerFactoryCustomizerTests {
 		assertThat(remoteIpValve.getProtocolHeader()).isEqualTo("x-my-protocol-header");
 		assertThat(remoteIpValve.getProtocolHeaderHttpsValue()).isEqualTo("On");
 		assertThat(remoteIpValve.getRemoteIpHeader()).isEqualTo("x-my-remote-ip-header");
-		assertThat(remoteIpValve.getHostHeader()).isEqualTo("x-my-forward-host");
 		assertThat(remoteIpValve.getPortHeader()).isEqualTo("x-my-forward-port");
 		assertThat(remoteIpValve.getInternalProxies()).isEqualTo("192.168.0.1");
 	}
@@ -275,14 +258,14 @@ class TomcatWebServerFactoryCustomizerTests {
 	@Test
 	void defaultRemoteIpValve() {
 		// Since 1.1.7 you need to specify at least the protocol
-		bind("server.tomcat.remoteip.protocol-header=X-Forwarded-Proto",
-				"server.tomcat.remoteip.remote-ip-header=X-Forwarded-For");
+		bind("server.tomcat.protocol-header=X-Forwarded-Proto", "server.tomcat.remote-ip-header=X-Forwarded-For");
 		testRemoteIpValveConfigured();
 	}
 
 	@Test
-	void setUseNativeForwardHeadersStrategy() {
-		this.serverProperties.setForwardHeadersStrategy(ForwardHeadersStrategy.NATIVE);
+	void setUseForwardHeaders() {
+		// Since 1.3.0 no need to explicitly set header names if use-forward-header=true
+		this.serverProperties.setUseForwardHeaders(true);
 		testRemoteIpValveConfigured();
 	}
 
@@ -315,17 +298,9 @@ class TomcatWebServerFactoryCustomizerTests {
 
 	@Test
 	void disableRemoteIpValve() {
-		bind("server.tomcat.remoteip.remote-ip-header=", "server.tomcat.remoteip.protocol-header=");
+		bind("server.tomcat.remote-ip-header=", "server.tomcat.protocol-header=");
 		TomcatServletWebServerFactory factory = customizeAndGetFactory();
 		assertThat(factory.getEngineValves()).isEmpty();
-	}
-
-	@Test
-	void testCustomizeRejectIllegalHeader() {
-		bind("server.tomcat.reject-illegal-header=false");
-		customizeAndRunServer((server) -> assertThat(
-				((AbstractHttp11Protocol<?>) server.getTomcat().getConnector().getProtocolHandler())
-						.getRejectIllegalHeader()).isFalse());
 	}
 
 	@Test
@@ -344,8 +319,8 @@ class TomcatWebServerFactoryCustomizerTests {
 
 	@Test
 	void testCustomizeMinSpareThreads() {
-		bind("server.tomcat.threads.min-spare=10");
-		assertThat(this.serverProperties.getTomcat().getThreads().getMinSpare()).isEqualTo(10);
+		bind("server.tomcat.min-spare-threads=10");
+		assertThat(this.serverProperties.getTomcat().getMinSpareThreads()).isEqualTo(10);
 	}
 
 	@Test
@@ -480,7 +455,7 @@ class TomcatWebServerFactoryCustomizerTests {
 	}
 
 	@Test
-	void accessLogWithIpv6CanonicalSet() {
+	void accessLogwithIpv6CanonicalSet() {
 		bind("server.tomcat.accesslog.enabled=true", "server.tomcat.accesslog.ipv6-canonical=true");
 		TomcatServletWebServerFactory factory = customizeAndGetFactory();
 		assertThat(((AccessLogValve) factory.getEngineValves().iterator().next()).getIpv6Canonical()).isTrue();

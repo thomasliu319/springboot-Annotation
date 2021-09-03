@@ -27,7 +27,7 @@ For Gradle, use the following declaration:
 [indent=0]
 ----
 	dependencies {
-		implementation 'org.springframework.boot:spring-boot-starter-actuator'
+		compile("org.springframework.boot:spring-boot-starter-actuator")
 	}
 ----
 

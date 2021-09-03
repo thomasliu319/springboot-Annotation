@@ -276,7 +276,7 @@ public class TaskExecutorBuilder {
 	 * @see #configure(ThreadPoolTaskExecutor)
 	 */
 	public ThreadPoolTaskExecutor build() {
-		return configure(new ThreadPoolTaskExecutor());
+		return build(ThreadPoolTaskExecutor.class);
 	}
 
 	/**

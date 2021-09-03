@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,6 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		assertThat(lines.get(6)).isEqualTo("↑     ↓");
 		assertThat(lines.get(7)).startsWith("|  three defined in " + CyclicBeanMethodsConfiguration.class.getName());
 		assertThat(lines.get(8)).isEqualTo("└─────┘");
-		assertThat(analysis.getAction()).isNotNull();
 	}
 
 	@Test
@@ -85,7 +84,6 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		assertThat(lines.get(7)).startsWith(
 				"|  " + BeanTwoConfiguration.class.getName() + " (field private " + BeanThree.class.getName());
 		assertThat(lines.get(8)).isEqualTo("└─────┘");
-		assertThat(analysis.getAction()).isNotNull();
 	}
 
 	@Test
@@ -109,21 +107,6 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		assertThat(lines.get(10))
 				.startsWith("|  three defined in " + CycleReferencedViaOtherBeansConfiguration.class.getName());
 		assertThat(lines.get(11)).isEqualTo("└─────┘");
-		assertThat(analysis.getAction()).isNotNull();
-	}
-
-	@Test
-	void testSelfReferenceCycle() throws IOException {
-		FailureAnalysis analysis = performAnalysis(SelfReferenceBeanConfiguration.class);
-		List<String> lines = readDescriptionLines(analysis);
-		assertThat(lines).hasSize(5);
-		assertThat(lines.get(0))
-				.isEqualTo("The dependencies of some of the beans in the application context form a cycle:");
-		assertThat(lines.get(1)).isEqualTo("");
-		assertThat(lines.get(2)).isEqualTo("┌──->──┐");
-		assertThat(lines.get(3)).startsWith("|  bean defined in " + SelfReferenceBeanConfiguration.class.getName());
-		assertThat(lines.get(4)).isEqualTo("└──<-──┘");
-		assertThat(analysis.getAction()).isNotNull();
 	}
 
 	@Test
@@ -257,16 +240,6 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 
 	}
 
-	@Configuration(proxyBeanMethods = false)
-	static class SelfReferenceBeanConfiguration {
-
-		@Bean
-		SelfReferenceBean bean(SelfReferenceBean bean) {
-			return new SelfReferenceBean();
-		}
-
-	}
-
 	static class RefererOne {
 
 		@Autowired
@@ -290,13 +263,6 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 	}
 
 	static class BeanThree {
-
-	}
-
-	static class SelfReferenceBean {
-
-		@Autowired
-		SelfReferenceBean bean;
 
 	}
 

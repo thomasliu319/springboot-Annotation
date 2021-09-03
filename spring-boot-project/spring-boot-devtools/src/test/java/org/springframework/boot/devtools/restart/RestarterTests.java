@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,10 @@ package org.springframework.boot.devtools.restart;
 
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,11 +80,10 @@ class RestarterTests {
 		Restarter.clearInstance();
 		Thread thread = new Thread(SampleApplication::main);
 		thread.start();
-		Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
-			assertThat(StringUtils.countOccurrencesOf(output.toString(), "Tick 0")).isGreaterThan(1);
-			assertThat(StringUtils.countOccurrencesOf(output.toString(), "Tick 1")).isGreaterThan(1);
-			assertThat(CloseCountingApplicationListener.closed).isGreaterThan(0);
-		});
+		Thread.sleep(2600);
+		assertThat(StringUtils.countOccurrencesOf(output.toString(), "Tick 0")).isGreaterThan(1);
+		assertThat(StringUtils.countOccurrencesOf(output.toString(), "Tick 1")).isGreaterThan(1);
+		assertThat(CloseCountingApplicationListener.closed).isGreaterThan(0);
 	}
 
 	@Test
@@ -178,7 +174,7 @@ class RestarterTests {
 
 		private int count = 0;
 
-		private static final AtomicBoolean restart = new AtomicBoolean();
+		private static volatile boolean quit = false;
 
 		@Scheduled(fixedDelay = 200)
 		void tickBean() {
@@ -187,7 +183,8 @@ class RestarterTests {
 
 		@Scheduled(initialDelay = 500, fixedDelay = 500)
 		void restart() {
-			if (SampleApplication.restart.compareAndSet(false, true)) {
+			System.out.println("Restart " + Thread.currentThread());
+			if (!SampleApplication.quit) {
 				Restarter.getInstance().restart();
 			}
 		}
@@ -198,6 +195,18 @@ class RestarterTests {
 					SampleApplication.class);
 			context.addApplicationListener(new CloseCountingApplicationListener());
 			Restarter.getInstance().prepare(context);
+			System.out.println("Sleep " + Thread.currentThread());
+			sleep();
+			quit = true;
+		}
+
+		private static void sleep() {
+			try {
+				Thread.sleep(1200);
+			}
+			catch (InterruptedException ex) {
+				// Ignore
+			}
 		}
 
 	}

@@ -56,7 +56,7 @@ class JavaBeanBinder implements DataObjectBinder {
 			return null;
 		}
 		BeanSupplier<T> beanSupplier = bean.getSupplier(target);
-		boolean bound = bind(propertyBinder, bean, beanSupplier, context);
+		boolean bound = bind(propertyBinder, bean, beanSupplier);
 		return (bound ? beanSupplier.get() : null);
 	}
 
@@ -76,12 +76,10 @@ class JavaBeanBinder implements DataObjectBinder {
 		return false;
 	}
 
-	private <T> boolean bind(DataObjectPropertyBinder propertyBinder, Bean<T> bean, BeanSupplier<T> beanSupplier,
-			Context context) {
+	private <T> boolean bind(DataObjectPropertyBinder propertyBinder, Bean<T> bean, BeanSupplier<T> beanSupplier) {
 		boolean bound = false;
 		for (BeanProperty beanProperty : bean.getProperties().values()) {
 			bound |= bind(beanSupplier, propertyBinder, beanProperty);
-			context.clearConfigurationProperty();
 		}
 		return bound;
 	}
@@ -149,10 +147,8 @@ class JavaBeanBinder implements DataObjectBinder {
 				}
 			}
 			for (Method method : declaredMethods) {
-				addMethodIfPossible(method, "is", 0, BeanProperty::addGetter);
-			}
-			for (Method method : declaredMethods) {
 				addMethodIfPossible(method, "get", 0, BeanProperty::addGetter);
+				addMethodIfPossible(method, "is", 0, BeanProperty::addGetter);
 			}
 			for (Method method : declaredMethods) {
 				addMethodIfPossible(method, "set", 1, BeanProperty::addSetter);
@@ -291,13 +287,9 @@ class JavaBeanBinder implements DataObjectBinder {
 		}
 
 		void addGetter(Method getter) {
-			if (this.getter == null || isBetterGetter(getter)) {
+			if (this.getter == null) {
 				this.getter = getter;
 			}
-		}
-
-		private boolean isBetterGetter(Method getter) {
-			return this.getter != null && this.getter.getName().startsWith("is");
 		}
 
 		void addSetter(Method setter) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.boot.test.autoconfigure.filter;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.context.TypeExcludeFilter;
-import org.springframework.boot.test.autoconfigure.filter.TypeExcludeFiltersContextCustomizerFactoryTests.EnclosingClass.WithEnclosingClassExcludeFilters;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.type.classreading.MetadataReader;
@@ -57,13 +56,6 @@ class TypeExcludeFiltersContextCustomizerFactoryTests {
 	}
 
 	@Test
-	void getContextCustomizerWhenEnclosingClassHasAnnotationShouldReturnCustomizer() {
-		ContextCustomizer customizer = this.factory.createContextCustomizer(WithEnclosingClassExcludeFilters.class,
-				null);
-		assertThat(customizer).isNotNull();
-	}
-
-	@Test
 	void hashCodeAndEquals() {
 		ContextCustomizer customizer1 = this.factory.createContextCustomizer(WithExcludeFilters.class, null);
 		ContextCustomizer customizer2 = this.factory.createContextCustomizer(WithSameExcludeFilters.class, null);
@@ -93,15 +85,6 @@ class TypeExcludeFiltersContextCustomizerFactoryTests {
 
 	@TypeExcludeFilters({ SimpleExclude.class, TestClassAwareExclude.class })
 	static class WithExcludeFilters {
-
-	}
-
-	@TypeExcludeFilters({ SimpleExclude.class, TestClassAwareExclude.class })
-	static class EnclosingClass {
-
-		class WithEnclosingClassExcludeFilters {
-
-		}
 
 	}
 

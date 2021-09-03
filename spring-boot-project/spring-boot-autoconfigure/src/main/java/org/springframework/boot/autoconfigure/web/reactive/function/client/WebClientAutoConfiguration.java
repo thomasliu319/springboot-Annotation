@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.boot.autoconfigure.web.reactive.function.client;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -49,13 +49,18 @@ import org.springframework.web.reactive.function.client.WebClient;
 @AutoConfigureAfter({ CodecsAutoConfiguration.class, ClientHttpConnectorAutoConfiguration.class })
 public class WebClientAutoConfiguration {
 
+	private final WebClient.Builder webClientBuilder;
+
+	public WebClientAutoConfiguration(ObjectProvider<WebClientCustomizer> customizerProvider) {
+		this.webClientBuilder = WebClient.builder();
+		customizerProvider.orderedStream().forEach((customizer) -> customizer.customize(this.webClientBuilder));
+	}
+
 	@Bean
 	@Scope("prototype")
 	@ConditionalOnMissingBean
-	public WebClient.Builder webClientBuilder(ObjectProvider<WebClientCustomizer> customizerProvider) {
-		WebClient.Builder builder = WebClient.builder();
-		customizerProvider.orderedStream().forEach((customizer) -> customizer.customize(builder));
-		return builder;
+	public WebClient.Builder webClientBuilder() {
+		return this.webClientBuilder.clone();
 	}
 
 	@Configuration(proxyBeanMethods = false)
@@ -65,8 +70,8 @@ public class WebClientAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean
 		@Order(0)
-		public WebClientCodecCustomizer exchangeStrategiesCustomizer(ObjectProvider<CodecCustomizer> codecCustomizers) {
-			return new WebClientCodecCustomizer(codecCustomizers.orderedStream().collect(Collectors.toList()));
+		public WebClientCodecCustomizer exchangeStrategiesCustomizer(List<CodecCustomizer> codecCustomizers) {
+			return new WebClientCodecCustomizer(codecCustomizers);
 		}
 
 	}

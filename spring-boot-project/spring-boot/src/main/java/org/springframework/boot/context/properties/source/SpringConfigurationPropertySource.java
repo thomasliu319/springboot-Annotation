@@ -18,6 +18,7 @@ package org.springframework.boot.context.properties.source;
 
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 
 import org.springframework.boot.context.properties.source.ConfigurationPropertyName.Form;
 import org.springframework.boot.origin.Origin;
@@ -27,6 +28,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 /**
  * {@link ConfigurationPropertySource} backed by a non-enumerable Spring
@@ -52,68 +54,38 @@ import org.springframework.util.Assert;
  */
 class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 
-	private static final PropertyMapper[] DEFAULT_MAPPERS = { DefaultPropertyMapper.INSTANCE };
-
-	private static final PropertyMapper[] SYSTEM_ENVIRONMENT_MAPPERS = { SystemEnvironmentPropertyMapper.INSTANCE,
-			DefaultPropertyMapper.INSTANCE };
-
 	private final PropertySource<?> propertySource;
 
-	private final PropertyMapper[] mappers;
+	private final PropertyMapper mapper;
+
+	private final Function<ConfigurationPropertyName, ConfigurationPropertyState> containsDescendantOf;
 
 	/**
 	 * Create a new {@link SpringConfigurationPropertySource} implementation.
 	 * @param propertySource the source property source
-	 * @param mappers the property mappers
+	 * @param mapper the property mapper
+	 * @param containsDescendantOf function used to implement
+	 * {@link #containsDescendantOf(ConfigurationPropertyName)} (may be {@code null})
 	 */
-	SpringConfigurationPropertySource(PropertySource<?> propertySource, PropertyMapper... mappers) {
+	SpringConfigurationPropertySource(PropertySource<?> propertySource, PropertyMapper mapper,
+			Function<ConfigurationPropertyName, ConfigurationPropertyState> containsDescendantOf) {
 		Assert.notNull(propertySource, "PropertySource must not be null");
-		Assert.isTrue(mappers.length > 0, "Mappers must contain at least one item");
+		Assert.notNull(mapper, "Mapper must not be null");
 		this.propertySource = propertySource;
-		this.mappers = mappers;
+		this.mapper = (mapper instanceof DelegatingPropertyMapper) ? mapper : new DelegatingPropertyMapper(mapper);
+		this.containsDescendantOf = (containsDescendantOf != null) ? containsDescendantOf
+				: (n) -> ConfigurationPropertyState.UNKNOWN;
 	}
 
 	@Override
 	public ConfigurationProperty getConfigurationProperty(ConfigurationPropertyName name) {
-		if (name == null) {
-			return null;
-		}
-		for (PropertyMapper mapper : this.mappers) {
-			try {
-				for (String candidate : mapper.map(name)) {
-					Object value = getPropertySource().getProperty(candidate);
-					if (value != null) {
-						Origin origin = PropertySourceOrigin.get(getPropertySource(), candidate);
-						return ConfigurationProperty.of(name, value, origin);
-					}
-				}
-			}
-			catch (Exception ex) {
-			}
-		}
-		return null;
+		PropertyMapping[] mappings = getMapper().map(name);
+		return find(mappings, name);
 	}
 
 	@Override
 	public ConfigurationPropertyState containsDescendantOf(ConfigurationPropertyName name) {
-		PropertySource<?> source = getPropertySource();
-		if (source.getSource() instanceof Random) {
-			return containsDescendantOfForRandom("random", name);
-		}
-		if (source.getSource() instanceof PropertySource<?>
-				&& ((PropertySource<?>) source.getSource()).getSource() instanceof Random) {
-			// Assume wrapped random sources use the source name as the prefix
-			return containsDescendantOfForRandom(source.getName(), name);
-		}
-		return ConfigurationPropertyState.UNKNOWN;
-	}
-
-	private static ConfigurationPropertyState containsDescendantOfForRandom(String prefix,
-			ConfigurationPropertyName name) {
-		if (name.getNumberOfElements() > 1 && name.getElement(0, Form.DASHED).equals(prefix)) {
-			return ConfigurationPropertyState.PRESENT;
-		}
-		return ConfigurationPropertyState.ABSENT;
+		return this.containsDescendantOf.apply(name);
 	}
 
 	@Override
@@ -121,12 +93,35 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 		return this.propertySource;
 	}
 
+	protected final ConfigurationProperty find(PropertyMapping[] mappings, ConfigurationPropertyName name) {
+		for (PropertyMapping candidate : mappings) {
+			if (candidate.isApplicable(name)) {
+				ConfigurationProperty result = find(candidate);
+				if (result != null) {
+					return result;
+				}
+			}
+		}
+		return null;
+	}
+
+	private ConfigurationProperty find(PropertyMapping mapping) {
+		String propertySourceName = mapping.getPropertySourceName();
+		Object value = getPropertySource().getProperty(propertySourceName);
+		if (value == null) {
+			return null;
+		}
+		ConfigurationPropertyName configurationPropertyName = mapping.getConfigurationPropertyName();
+		Origin origin = PropertySourceOrigin.get(this.propertySource, propertySourceName);
+		return ConfigurationProperty.of(configurationPropertyName, value, origin);
+	}
+
 	protected PropertySource<?> getPropertySource() {
 		return this.propertySource;
 	}
 
-	protected final PropertyMapper[] getMappers() {
-		return this.mappers;
+	protected final PropertyMapper getMapper() {
+		return this.mapper;
 	}
 
 	@Override
@@ -143,18 +138,19 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 	 */
 	static SpringConfigurationPropertySource from(PropertySource<?> source) {
 		Assert.notNull(source, "Source must not be null");
-		PropertyMapper[] mappers = getPropertyMappers(source);
+		PropertyMapper mapper = getPropertyMapper(source);
 		if (isFullEnumerable(source)) {
-			return new SpringIterableConfigurationPropertySource((EnumerablePropertySource<?>) source, mappers);
+			return new SpringIterableConfigurationPropertySource((EnumerablePropertySource<?>) source, mapper);
 		}
-		return new SpringConfigurationPropertySource(source, mappers);
+		return new SpringConfigurationPropertySource(source, mapper, getContainsDescendantOfForSource(source));
 	}
 
-	private static PropertyMapper[] getPropertyMappers(PropertySource<?> source) {
+	private static PropertyMapper getPropertyMapper(PropertySource<?> source) {
 		if (source instanceof SystemEnvironmentPropertySource && hasSystemEnvironmentName(source)) {
-			return SYSTEM_ENVIRONMENT_MAPPERS;
+			return new DelegatingPropertyMapper(SystemEnvironmentPropertyMapper.INSTANCE,
+					DefaultPropertyMapper.INSTANCE);
 		}
-		return DEFAULT_MAPPERS;
+		return new DelegatingPropertyMapper(DefaultPropertyMapper.INSTANCE);
 	}
 
 	private static boolean hasSystemEnvironmentName(PropertySource<?> source) {
@@ -182,6 +178,95 @@ class SpringConfigurationPropertySource implements ConfigurationPropertySource {
 			source = (PropertySource<?>) source.getSource();
 		}
 		return source;
+	}
+
+	private static Function<ConfigurationPropertyName, ConfigurationPropertyState> getContainsDescendantOfForSource(
+			PropertySource<?> source) {
+		if (source.getSource() instanceof Random) {
+			return (name) -> containsDescendantOfForRandom("random", name);
+		}
+		if (source.getSource() instanceof PropertySource<?>
+				&& ((PropertySource<?>) source.getSource()).getSource() instanceof Random) {
+			// Assume wrapped random sources use the source name as the prefix
+			return (name) -> containsDescendantOfForRandom(source.getName(), name);
+		}
+		return null;
+	}
+
+	private static ConfigurationPropertyState containsDescendantOfForRandom(String prefix,
+			ConfigurationPropertyName name) {
+		if (name.getNumberOfElements() > 1 && name.getElement(0, Form.DASHED).equals(prefix)) {
+			return ConfigurationPropertyState.PRESENT;
+		}
+		return ConfigurationPropertyState.ABSENT;
+	}
+
+	/**
+	 * {@link PropertyMapper} that delegates to other {@link PropertyMapper}s and also
+	 * swallows exceptions when the mapping fails.
+	 */
+	private static class DelegatingPropertyMapper implements PropertyMapper {
+
+		private static final PropertyMapping[] NONE = {};
+
+		private final PropertyMapper first;
+
+		private final PropertyMapper second;
+
+		DelegatingPropertyMapper(PropertyMapper first) {
+			this(first, null);
+		}
+
+		DelegatingPropertyMapper(PropertyMapper first, PropertyMapper second) {
+			this.first = first;
+			this.second = second;
+		}
+
+		@Override
+		public PropertyMapping[] map(ConfigurationPropertyName configurationPropertyName) {
+			PropertyMapping[] first = map(this.first, configurationPropertyName);
+			PropertyMapping[] second = map(this.second, configurationPropertyName);
+			return merge(first, second);
+		}
+
+		private PropertyMapping[] map(PropertyMapper mapper, ConfigurationPropertyName configurationPropertyName) {
+			try {
+				return (mapper != null) ? mapper.map(configurationPropertyName) : NONE;
+			}
+			catch (Exception ex) {
+				return NONE;
+			}
+		}
+
+		@Override
+		public PropertyMapping[] map(String propertySourceName) {
+			PropertyMapping[] first = map(this.first, propertySourceName);
+			PropertyMapping[] second = map(this.second, propertySourceName);
+			return merge(first, second);
+		}
+
+		private PropertyMapping[] map(PropertyMapper mapper, String propertySourceName) {
+			try {
+				return (mapper != null) ? mapper.map(propertySourceName) : NONE;
+			}
+			catch (Exception ex) {
+				return NONE;
+			}
+		}
+
+		private PropertyMapping[] merge(PropertyMapping[] first, PropertyMapping[] second) {
+			if (ObjectUtils.isEmpty(second)) {
+				return first;
+			}
+			if (ObjectUtils.isEmpty(first)) {
+				return second;
+			}
+			PropertyMapping[] merged = new PropertyMapping[first.length + second.length];
+			System.arraycopy(first, 0, merged, 0, first.length);
+			System.arraycopy(second, 0, merged, first.length, second.length);
+			return merged;
+		}
+
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,10 +29,10 @@ import org.apache.coyote.ProtocolHandler;
 import org.apache.coyote.http11.AbstractHttp11Protocol;
 
 import org.springframework.boot.autoconfigure.web.ErrorProperties;
-import org.springframework.boot.autoconfigure.web.ErrorProperties.IncludeAttribute;
+import org.springframework.boot.autoconfigure.web.ErrorProperties.IncludeStacktrace;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
+import org.springframework.boot.autoconfigure.web.ServerProperties.Tomcat;
 import org.springframework.boot.autoconfigure.web.ServerProperties.Tomcat.Accesslog;
-import org.springframework.boot.autoconfigure.web.ServerProperties.Tomcat.Remoteip;
 import org.springframework.boot.cloud.CloudPlatform;
 import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.boot.web.embedded.tomcat.ConfigurableTomcatWebServerFactory;
@@ -55,8 +55,6 @@ import org.springframework.util.unit.DataSize;
  * @author Andrew McGhie
  * @author Dirk Deyne
  * @author Rafiullah Hamedy
- * @author Victor Mandujano
- * @author Parviz Rozikov
  * @since 2.0.0
  */
 public class TomcatWebServerFactoryCustomizer
@@ -85,10 +83,9 @@ public class TomcatWebServerFactoryCustomizer
 		propertyMapper.from(tomcatProperties::getBackgroundProcessorDelay).whenNonNull().as(Duration::getSeconds)
 				.as(Long::intValue).to(factory::setBackgroundProcessorDelay);
 		customizeRemoteIpValve(factory);
-		ServerProperties.Tomcat.Threads threadProperties = tomcatProperties.getThreads();
-		propertyMapper.from(threadProperties::getMax).when(this::isPositive)
-				.to((maxThreads) -> customizeMaxThreads(factory, threadProperties.getMax()));
-		propertyMapper.from(threadProperties::getMinSpare).when(this::isPositive)
+		propertyMapper.from(tomcatProperties::getMaxThreads).when(this::isPositive)
+				.to((maxThreads) -> customizeMaxThreads(factory, tomcatProperties.getMaxThreads()));
+		propertyMapper.from(tomcatProperties::getMinSpareThreads).when(this::isPositive)
 				.to((minSpareThreads) -> customizeMinThreads(factory, minSpareThreads));
 		propertyMapper.from(this.serverProperties.getMaxHttpHeaderSize()).whenNonNull().asInt(DataSize::toBytes)
 				.when(this::isPositive)
@@ -101,6 +98,8 @@ public class TomcatWebServerFactoryCustomizer
 		propertyMapper.from(tomcatProperties::getAccesslog).when(ServerProperties.Tomcat.Accesslog::isEnabled)
 				.to((enabled) -> customizeAccessLog(factory));
 		propertyMapper.from(tomcatProperties::getUriEncoding).whenNonNull().to(factory::setUriEncoding);
+		propertyMapper.from(properties::getConnectionTimeout).whenNonNull()
+				.to((connectionTimeout) -> customizeConnectionTimeout(factory, connectionTimeout));
 		propertyMapper.from(tomcatProperties::getConnectionTimeout).whenNonNull()
 				.to((connectionTimeout) -> customizeConnectionTimeout(factory, connectionTimeout));
 		propertyMapper.from(tomcatProperties::getMaxConnections).when(this::isPositive)
@@ -109,16 +108,10 @@ public class TomcatWebServerFactoryCustomizer
 				.to((acceptCount) -> customizeAcceptCount(factory, acceptCount));
 		propertyMapper.from(tomcatProperties::getProcessorCache)
 				.to((processorCache) -> customizeProcessorCache(factory, processorCache));
-		propertyMapper.from(tomcatProperties::getKeepAliveTimeout).whenNonNull()
-				.to((keepAliveTimeout) -> customizeKeepAliveTimeout(factory, keepAliveTimeout));
-		propertyMapper.from(tomcatProperties::getMaxKeepAliveRequests)
-				.to((maxKeepAliveRequests) -> customizeMaxKeepAliveRequests(factory, maxKeepAliveRequests));
 		propertyMapper.from(tomcatProperties::getRelaxedPathChars).as(this::joinCharacters).whenHasText()
 				.to((relaxedChars) -> customizeRelaxedPathChars(factory, relaxedChars));
 		propertyMapper.from(tomcatProperties::getRelaxedQueryChars).as(this::joinCharacters).whenHasText()
 				.to((relaxedChars) -> customizeRelaxedQueryChars(factory, relaxedChars));
-		propertyMapper.from(tomcatProperties::isRejectIllegalHeader)
-				.to((rejectIllegalHeader) -> customizeRejectIllegalHeader(factory, rejectIllegalHeader));
 		customizeStaticResources(factory);
 		customizeErrorReportValve(properties.getError(), factory);
 	}
@@ -142,26 +135,6 @@ public class TomcatWebServerFactoryCustomizer
 			ProtocolHandler handler = connector.getProtocolHandler();
 			if (handler instanceof AbstractProtocol) {
 				((AbstractProtocol<?>) handler).setProcessorCache(processorCache);
-			}
-		});
-	}
-
-	private void customizeKeepAliveTimeout(ConfigurableTomcatWebServerFactory factory, Duration keepAliveTimeout) {
-		factory.addConnectorCustomizers((connector) -> {
-			ProtocolHandler handler = connector.getProtocolHandler();
-			if (handler instanceof AbstractProtocol) {
-				AbstractProtocol<?> protocol = (AbstractProtocol<?>) handler;
-				protocol.setKeepAliveTimeout((int) keepAliveTimeout.toMillis());
-			}
-		});
-	}
-
-	private void customizeMaxKeepAliveRequests(ConfigurableTomcatWebServerFactory factory, int maxKeepAliveRequests) {
-		factory.addConnectorCustomizers((connector) -> {
-			ProtocolHandler handler = connector.getProtocolHandler();
-			if (handler instanceof AbstractHttp11Protocol) {
-				AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) handler;
-				protocol.setMaxKeepAliveRequests(maxKeepAliveRequests);
 			}
 		});
 	}
@@ -194,24 +167,14 @@ public class TomcatWebServerFactoryCustomizer
 		factory.addConnectorCustomizers((connector) -> connector.setProperty("relaxedQueryChars", relaxedChars));
 	}
 
-	private void customizeRejectIllegalHeader(ConfigurableTomcatWebServerFactory factory, boolean rejectIllegalHeader) {
-		factory.addConnectorCustomizers((connector) -> {
-			ProtocolHandler handler = connector.getProtocolHandler();
-			if (handler instanceof AbstractHttp11Protocol) {
-				AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) handler;
-				protocol.setRejectIllegalHeader(rejectIllegalHeader);
-			}
-		});
-	}
-
 	private String joinCharacters(List<Character> content) {
 		return content.stream().map(String::valueOf).collect(Collectors.joining());
 	}
 
 	private void customizeRemoteIpValve(ConfigurableTomcatWebServerFactory factory) {
-		Remoteip remoteIpProperties = this.serverProperties.getTomcat().getRemoteip();
-		String protocolHeader = remoteIpProperties.getProtocolHeader();
-		String remoteIpHeader = remoteIpProperties.getRemoteIpHeader();
+		Tomcat tomcatProperties = this.serverProperties.getTomcat();
+		String protocolHeader = tomcatProperties.getProtocolHeader();
+		String remoteIpHeader = tomcatProperties.getRemoteIpHeader();
 		// For back compatibility the valve is also enabled if protocol-header is set
 		if (StringUtils.hasText(protocolHeader) || StringUtils.hasText(remoteIpHeader)
 				|| getOrDeduceUseForwardHeaders()) {
@@ -221,16 +184,16 @@ public class TomcatWebServerFactoryCustomizer
 				valve.setRemoteIpHeader(remoteIpHeader);
 			}
 			// The internal proxies default to a list of "safe" internal IP addresses
-			valve.setInternalProxies(remoteIpProperties.getInternalProxies());
+			valve.setInternalProxies(tomcatProperties.getInternalProxies());
 			try {
-				valve.setHostHeader(remoteIpProperties.getHostHeader());
+				valve.setHostHeader(tomcatProperties.getHostHeader());
 			}
 			catch (NoSuchMethodError ex) {
 				// Avoid failure with war deployments to Tomcat 8.5 before 8.5.44 and
 				// Tomcat 9 before 9.0.23
 			}
-			valve.setPortHeader(remoteIpProperties.getPortHeader());
-			valve.setProtocolHeaderHttpsValue(remoteIpProperties.getProtocolHeaderHttpsValue());
+			valve.setPortHeader(tomcatProperties.getPortHeader());
+			valve.setProtocolHeaderHttpsValue(tomcatProperties.getProtocolHeaderHttpsValue());
 			// ... so it's safe to add this valve by default.
 			factory.addEngineValves(valve);
 		}
@@ -317,19 +280,21 @@ public class TomcatWebServerFactoryCustomizer
 
 	private void customizeStaticResources(ConfigurableTomcatWebServerFactory factory) {
 		ServerProperties.Tomcat.Resource resource = this.serverProperties.getTomcat().getResource();
-		factory.addContextCustomizers((context) -> context.addLifecycleListener((event) -> {
-			if (event.getType().equals(Lifecycle.CONFIGURE_START_EVENT)) {
-				context.getResources().setCachingAllowed(resource.isAllowCaching());
-				if (resource.getCacheTtl() != null) {
-					long ttl = resource.getCacheTtl().toMillis();
-					context.getResources().setCacheTtl(ttl);
+		factory.addContextCustomizers((context) -> {
+			context.addLifecycleListener((event) -> {
+				if (event.getType().equals(Lifecycle.CONFIGURE_START_EVENT)) {
+					context.getResources().setCachingAllowed(resource.isAllowCaching());
+					if (resource.getCacheTtl() != null) {
+						long ttl = resource.getCacheTtl().toMillis();
+						context.getResources().setCacheTtl(ttl);
+					}
 				}
-			}
-		}));
+			});
+		});
 	}
 
 	private void customizeErrorReportValve(ErrorProperties error, ConfigurableTomcatWebServerFactory factory) {
-		if (error.getIncludeStacktrace() == IncludeAttribute.NEVER) {
+		if (error.getIncludeStacktrace() == IncludeStacktrace.NEVER) {
 			factory.addContextCustomizers((context) -> {
 				ErrorReportValve valve = new ErrorReportValve();
 				valve.setShowServerInfo(false);

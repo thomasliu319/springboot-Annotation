@@ -25,11 +25,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.testsupport.testcontainers.DockerImageNames;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ContextConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -41,10 +42,11 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  */
 @DataMongoTest
 @Testcontainers(disabledWithoutDocker = true)
+@ContextConfiguration(initializers = DataMongoTestIntegrationTests.Initializer.class)
 class DataMongoTestIntegrationTests {
 
 	@Container
-	static final MongoDBContainer mongoDB = new MongoDBContainer(DockerImageNames.mongo()).withStartupAttempts(5)
+	static final MongoDBContainer mongoDB = new MongoDBContainer("mongo:4.0.10").withStartupAttempts(5)
 			.withStartupTimeout(Duration.ofMinutes(5));
 
 	@Autowired
@@ -71,9 +73,14 @@ class DataMongoTestIntegrationTests {
 				.isThrownBy(() -> this.applicationContext.getBean(ExampleService.class));
 	}
 
-	@DynamicPropertySource
-	static void mongoProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.data.mongodb.uri", mongoDB::getReplicaSetUrl);
+	static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+		@Override
+		public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
+			TestPropertyValues.of("spring.data.mongodb.uri=" + mongoDB.getReplicaSetUrl())
+					.applyTo(configurableApplicationContext.getEnvironment());
+		}
+
 	}
 
 }

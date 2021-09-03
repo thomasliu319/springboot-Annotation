@@ -61,8 +61,8 @@ class WebMvcEndpointChildContextConfiguration {
 	 */
 	@Bean
 	@ConditionalOnBean(ErrorAttributes.class)
-	ManagementErrorEndpoint errorEndpoint(ErrorAttributes errorAttributes, ServerProperties serverProperties) {
-		return new ManagementErrorEndpoint(errorAttributes, serverProperties.getError());
+	ManagementErrorEndpoint errorEndpoint(ErrorAttributes errorAttributes) {
+		return new ManagementErrorEndpoint(errorAttributes);
 	}
 
 	@Bean

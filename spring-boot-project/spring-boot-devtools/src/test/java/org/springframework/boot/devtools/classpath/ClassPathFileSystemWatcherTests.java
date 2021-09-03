@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import org.springframework.boot.devtools.filewatch.ChangedFile;
 import org.springframework.boot.devtools.filewatch.FileSystemWatcher;
 import org.springframework.boot.devtools.filewatch.FileSystemWatcherFactory;
 import org.springframework.context.ApplicationListener;
@@ -58,19 +57,19 @@ class ClassPathFileSystemWatcherTests {
 	}
 
 	@Test
-	void configuredWithRestartStrategy(@TempDir File directory) throws Exception {
+	void configuredWithRestartStrategy(@TempDir File folder) throws Exception {
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
 		Map<String, Object> properties = new HashMap<>();
 		List<URL> urls = new ArrayList<>();
 		urls.add(new URL("https://spring.io"));
-		urls.add(directory.toURI().toURL());
+		urls.add(folder.toURI().toURL());
 		properties.put("urls", urls);
 		MapPropertySource propertySource = new MapPropertySource("test", properties);
 		context.getEnvironment().getPropertySources().addLast(propertySource);
 		context.register(Config.class);
 		context.refresh();
 		Thread.sleep(200);
-		File classFile = new File(directory, "Example.class");
+		File classFile = new File(folder, "Example.class");
 		FileCopyUtils.copy("file".getBytes(), classFile);
 		Thread.sleep(1000);
 		List<ClassPathChangedEvent> events = context.getBean(Listener.class).getEvents();
@@ -80,9 +79,9 @@ class ClassPathFileSystemWatcherTests {
 			}
 			Thread.sleep(500);
 		}
-		assertThat(events).hasSize(1);
-		assertThat(events.get(0).getChangeSet().iterator().next()).extracting(ChangedFile::getFile)
-				.containsExactly(classFile);
+		assertThat(events.size()).isEqualTo(1);
+		assertThat(events.get(0).getChangeSet().iterator().next().getFiles().iterator().next().getFile())
+				.isEqualTo(classFile);
 		context.close();
 	}
 

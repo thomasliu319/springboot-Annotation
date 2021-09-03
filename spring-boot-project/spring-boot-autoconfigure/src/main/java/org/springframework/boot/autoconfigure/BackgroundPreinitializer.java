@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.event.SpringApplicationEvent;
 import org.springframework.boot.context.logging.LoggingApplicationListener;
 import org.springframework.context.ApplicationListener;
-import org.springframework.core.NativeDetector;
 import org.springframework.core.annotation.Order;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -46,7 +45,6 @@ import org.springframework.http.converter.support.AllEncompassingFormHttpMessage
  * @author Phillip Webb
  * @author Andy Wilkinson
  * @author Artsiom Yudovin
- * @author Sebastien Deleuze
  * @since 1.3.0
  */
 @Order(LoggingApplicationListener.DEFAULT_ORDER + 1)
@@ -61,23 +59,14 @@ public class BackgroundPreinitializer implements ApplicationListener<SpringAppli
 	 */
 	public static final String IGNORE_BACKGROUNDPREINITIALIZER_PROPERTY_NAME = "spring.backgroundpreinitializer.ignore";
 
-	private static final AtomicBoolean preinitializationStarted = new AtomicBoolean();
+	private static final AtomicBoolean preinitializationStarted = new AtomicBoolean(false);
 
 	private static final CountDownLatch preinitializationComplete = new CountDownLatch(1);
 
-	private static final boolean ENABLED;
-
-	static {
-		ENABLED = !Boolean.getBoolean(IGNORE_BACKGROUNDPREINITIALIZER_PROPERTY_NAME) && !NativeDetector.inNativeImage()
-				&& Runtime.getRuntime().availableProcessors() > 1;
-	}
-
 	@Override
 	public void onApplicationEvent(SpringApplicationEvent event) {
-		if (!ENABLED) {
-			return;
-		}
-		if (event instanceof ApplicationEnvironmentPreparedEvent
+		if (!Boolean.getBoolean(IGNORE_BACKGROUNDPREINITIALIZER_PROPERTY_NAME)
+				&& event instanceof ApplicationEnvironmentPreparedEvent && multipleProcessors()
 				&& preinitializationStarted.compareAndSet(false, true)) {
 			performPreinitialization();
 		}
@@ -90,6 +79,10 @@ public class BackgroundPreinitializer implements ApplicationListener<SpringAppli
 				Thread.currentThread().interrupt();
 			}
 		}
+	}
+
+	private boolean multipleProcessors() {
+		return Runtime.getRuntime().availableProcessors() > 1;
 	}
 
 	private void performPreinitialization() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +17,17 @@
 package org.springframework.boot.loader.archive;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.util.EnumSet;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.List;
 import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.Manifest;
@@ -51,19 +47,11 @@ public class JarFileArchive implements Archive {
 
 	private static final int BUFFER_SIZE = 32 * 1024;
 
-	private static final FileAttribute<?>[] NO_FILE_ATTRIBUTES = {};
-
-	private static final EnumSet<PosixFilePermission> DIRECTORY_PERMISSIONS = EnumSet.of(PosixFilePermission.OWNER_READ,
-			PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE);
-
-	private static final EnumSet<PosixFilePermission> FILE_PERMISSIONS = EnumSet.of(PosixFilePermission.OWNER_READ,
-			PosixFilePermission.OWNER_WRITE);
-
 	private final JarFile jarFile;
 
 	private URL url;
 
-	private Path tempUnpackDirectory;
+	private File tempUnpackFolder;
 
 	public JarFileArchive(File file) throws IOException {
 		this(file, file.toURI().toURL());
@@ -92,14 +80,19 @@ public class JarFileArchive implements Archive {
 	}
 
 	@Override
-	public Iterator<Archive> getNestedArchives(EntryFilter searchFilter, EntryFilter includeFilter) throws IOException {
-		return new NestedArchiveIterator(this.jarFile.iterator(), searchFilter, includeFilter);
+	public List<Archive> getNestedArchives(EntryFilter filter) throws IOException {
+		List<Archive> nestedArchives = new ArrayList<>();
+		for (Entry entry : this) {
+			if (filter.matches(entry)) {
+				nestedArchives.add(getNestedArchive(entry));
+			}
+		}
+		return Collections.unmodifiableList(nestedArchives);
 	}
 
 	@Override
-	@Deprecated
 	public Iterator<Entry> iterator() {
-		return new EntryIterator(this.jarFile.iterator(), null, null);
+		return new EntryIterator(this.jarFile.entries());
 	}
 
 	@Override
@@ -126,42 +119,36 @@ public class JarFileArchive implements Archive {
 		if (name.lastIndexOf('/') != -1) {
 			name = name.substring(name.lastIndexOf('/') + 1);
 		}
-		Path path = getTempUnpackDirectory().resolve(name);
-		if (!Files.exists(path) || Files.size(path) != jarEntry.getSize()) {
-			unpack(jarEntry, path);
+		File file = new File(getTempUnpackFolder(), name);
+		if (!file.exists() || file.length() != jarEntry.getSize()) {
+			unpack(jarEntry, file);
 		}
-		return new JarFileArchive(path.toFile(), path.toUri().toURL());
+		return new JarFileArchive(file, file.toURI().toURL());
 	}
 
-	private Path getTempUnpackDirectory() {
-		if (this.tempUnpackDirectory == null) {
-			Path tempDirectory = Paths.get(System.getProperty("java.io.tmpdir"));
-			this.tempUnpackDirectory = createUnpackDirectory(tempDirectory);
+	private File getTempUnpackFolder() {
+		if (this.tempUnpackFolder == null) {
+			File tempFolder = new File(System.getProperty("java.io.tmpdir"));
+			this.tempUnpackFolder = createUnpackFolder(tempFolder);
 		}
-		return this.tempUnpackDirectory;
+		return this.tempUnpackFolder;
 	}
 
-	private Path createUnpackDirectory(Path parent) {
+	private File createUnpackFolder(File parent) {
 		int attempts = 0;
 		while (attempts++ < 1000) {
-			String fileName = Paths.get(this.jarFile.getName()).getFileName().toString();
-			Path unpackDirectory = parent.resolve(fileName + "-spring-boot-libs-" + UUID.randomUUID());
-			try {
-				createDirectory(unpackDirectory);
-				return unpackDirectory;
-			}
-			catch (IOException ex) {
+			String fileName = new File(this.jarFile.getName()).getName();
+			File unpackFolder = new File(parent, fileName + "-spring-boot-libs-" + UUID.randomUUID());
+			if (unpackFolder.mkdirs()) {
+				return unpackFolder;
 			}
 		}
-		throw new IllegalStateException("Failed to create unpack directory in directory '" + parent + "'");
+		throw new IllegalStateException("Failed to create unpack folder in directory '" + parent + "'");
 	}
 
-	private void unpack(JarEntry entry, Path path) throws IOException {
-		createFile(path);
-		path.toFile().deleteOnExit();
+	private void unpack(JarEntry entry, File file) throws IOException {
 		try (InputStream inputStream = this.jarFile.getInputStream(entry);
-				OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.WRITE,
-						StandardOpenOption.TRUNCATE_EXISTING)) {
+				OutputStream outputStream = new FileOutputStream(file)) {
 			byte[] buffer = new byte[BUFFER_SIZE];
 			int bytesRead;
 			while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -169,21 +156,6 @@ public class JarFileArchive implements Archive {
 			}
 			outputStream.flush();
 		}
-	}
-
-	private void createDirectory(Path path) throws IOException {
-		Files.createDirectory(path, getFileAttributes(path.getFileSystem(), DIRECTORY_PERMISSIONS));
-	}
-
-	private void createFile(Path path) throws IOException {
-		Files.createFile(path, getFileAttributes(path.getFileSystem(), FILE_PERMISSIONS));
-	}
-
-	private FileAttribute<?>[] getFileAttributes(FileSystem fileSystem, EnumSet<PosixFilePermission> ownerReadWrite) {
-		if (!fileSystem.supportedFileAttributeViews().contains("posix")) {
-			return NO_FILE_ATTRIBUTES;
-		}
-		return new FileAttribute<?>[] { PosixFilePermissions.asFileAttribute(ownerReadWrite) };
 	}
 
 	@Override
@@ -197,85 +169,29 @@ public class JarFileArchive implements Archive {
 	}
 
 	/**
-	 * Abstract base class for iterator implementations.
+	 * {@link Archive.Entry} iterator implementation backed by {@link JarEntry}.
 	 */
-	private abstract static class AbstractIterator<T> implements Iterator<T> {
+	private static class EntryIterator implements Iterator<Entry> {
 
-		private final Iterator<JarEntry> iterator;
+		private final Enumeration<JarEntry> enumeration;
 
-		private final EntryFilter searchFilter;
-
-		private final EntryFilter includeFilter;
-
-		private Entry current;
-
-		AbstractIterator(Iterator<JarEntry> iterator, EntryFilter searchFilter, EntryFilter includeFilter) {
-			this.iterator = iterator;
-			this.searchFilter = searchFilter;
-			this.includeFilter = includeFilter;
-			this.current = poll();
+		EntryIterator(Enumeration<JarEntry> enumeration) {
+			this.enumeration = enumeration;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.current != null;
+			return this.enumeration.hasMoreElements();
 		}
 
 		@Override
-		public T next() {
-			T result = adapt(this.current);
-			this.current = poll();
-			return result;
-		}
-
-		private Entry poll() {
-			while (this.iterator.hasNext()) {
-				JarFileEntry candidate = new JarFileEntry(this.iterator.next());
-				if ((this.searchFilter == null || this.searchFilter.matches(candidate))
-						&& (this.includeFilter == null || this.includeFilter.matches(candidate))) {
-					return candidate;
-				}
-			}
-			return null;
-		}
-
-		protected abstract T adapt(Entry entry);
-
-	}
-
-	/**
-	 * {@link Archive.Entry} iterator implementation backed by {@link JarEntry}.
-	 */
-	private static class EntryIterator extends AbstractIterator<Entry> {
-
-		EntryIterator(Iterator<JarEntry> iterator, EntryFilter searchFilter, EntryFilter includeFilter) {
-			super(iterator, searchFilter, includeFilter);
+		public Entry next() {
+			return new JarFileEntry(this.enumeration.nextElement());
 		}
 
 		@Override
-		protected Entry adapt(Entry entry) {
-			return entry;
-		}
-
-	}
-
-	/**
-	 * Nested {@link Archive} iterator implementation backed by {@link JarEntry}.
-	 */
-	private class NestedArchiveIterator extends AbstractIterator<Archive> {
-
-		NestedArchiveIterator(Iterator<JarEntry> iterator, EntryFilter searchFilter, EntryFilter includeFilter) {
-			super(iterator, searchFilter, includeFilter);
-		}
-
-		@Override
-		protected Archive adapt(Entry entry) {
-			try {
-				return getNestedArchive(entry);
-			}
-			catch (IOException ex) {
-				throw new IllegalStateException(ex);
-			}
+		public void remove() {
+			throw new UnsupportedOperationException("remove");
 		}
 
 	}

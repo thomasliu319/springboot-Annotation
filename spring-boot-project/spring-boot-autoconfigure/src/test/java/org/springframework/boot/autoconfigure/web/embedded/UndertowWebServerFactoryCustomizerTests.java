@@ -134,22 +134,6 @@ class UndertowWebServerFactoryCustomizerTests {
 	}
 
 	@Test
-	void customizeIoThreads() {
-		bind("server.undertow.threads.io=4");
-		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
-		this.customizer.customize(factory);
-		verify(factory).setIoThreads(4);
-	}
-
-	@Test
-	void customizeWorkerThreads() {
-		bind("server.undertow.threads.worker=10");
-		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
-		this.customizer.customize(factory);
-		verify(factory).setWorkerThreads(10);
-	}
-
-	@Test
 	void allowEncodedSlashes() {
 		bind("server.undertow.allow-encoded-slash=true");
 		assertThat(boundServerOption(UndertowOptions.ALLOW_ENCODED_SLASH)).isTrue();
@@ -210,6 +194,14 @@ class UndertowWebServerFactoryCustomizerTests {
 		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
 		this.customizer.customize(factory);
 		verify(factory).setUseForwardHeaders(false);
+	}
+
+	@Test
+	void setUseForwardHeaders() {
+		this.serverProperties.setUseForwardHeaders(true);
+		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
+		this.customizer.customize(factory);
+		verify(factory).setUseForwardHeaders(true);
 	}
 
 	@Test

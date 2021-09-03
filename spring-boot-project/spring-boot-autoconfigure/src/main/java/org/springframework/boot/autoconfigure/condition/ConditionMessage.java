@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import org.springframework.util.StringUtils;
  */
 public final class ConditionMessage {
 
-	private final String message;
+	private String message;
 
 	private ConditionMessage() {
 		this(null);
@@ -296,17 +296,17 @@ public final class ConditionMessage {
 		 * @return a built {@link ConditionMessage}
 		 */
 		public ConditionMessage because(String reason) {
-			if (StringUtils.hasLength(reason)) {
-				return new ConditionMessage(ConditionMessage.this,
-						StringUtils.hasLength(this.condition) ? this.condition + " " + reason : reason);
+			if (StringUtils.isEmpty(reason)) {
+				return new ConditionMessage(ConditionMessage.this, this.condition);
 			}
-			return new ConditionMessage(ConditionMessage.this, this.condition);
+			return new ConditionMessage(ConditionMessage.this,
+					StringUtils.isEmpty(this.condition) ? reason : this.condition + " " + reason);
 		}
 
 	}
 
 	/**
-	 * Builder used to create an {@link ItemsBuilder} for a condition.
+	 * Builder used to create a {@link ItemsBuilder} for a condition.
 	 */
 	public final class ItemsBuilder {
 
@@ -381,8 +381,7 @@ public final class ConditionMessage {
 			Assert.notNull(style, "Style must not be null");
 			StringBuilder message = new StringBuilder(this.reason);
 			items = style.applyTo(items);
-			if ((this.condition == null || items == null || items.size() <= 1)
-					&& StringUtils.hasLength(this.singular)) {
+			if ((this.condition == null || items.size() <= 1) && StringUtils.hasLength(this.singular)) {
 				message.append(" ").append(this.singular);
 			}
 			else if (StringUtils.hasLength(this.plural)) {
@@ -426,10 +425,7 @@ public final class ConditionMessage {
 		};
 
 		public Collection<?> applyTo(Collection<?> items) {
-			if (items == null) {
-				return null;
-			}
-			List<Object> result = new ArrayList<>(items.size());
+			List<Object> result = new ArrayList<>();
 			for (Object item : items) {
 				result.add(applyToItem(item));
 			}

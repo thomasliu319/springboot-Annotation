@@ -104,7 +104,7 @@ class AutoConfiguredHealthEndpointGroupsTests {
 	}
 
 	@Test
-	void createWhenHasStatusAggregatorBeanReturnsInstanceWithAggregatorUsedForAllGroups() {
+	void createWhenHasStatusAggregatorBeanReturnsInstanceWithAgregatorUsedForAllGroups() {
 		this.contextRunner.withUserConfiguration(CustomStatusAggregatorConfiguration.class)
 				.withPropertyValues("management.endpoint.health.status.order=up,down",
 						"management.endpoint.health.group.a.include=*")

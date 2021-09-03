@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,9 +67,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link SpringBootTest @SpringBootTest}.
  *
  * @author Dave Syer
- * @author Scott Frederick
  */
-@SpringBootTest(properties = { "server.error.include-message=always" })
+@SpringBootTest
 @DirtiesContext
 class BasicErrorControllerMockMvcTests {
 
@@ -118,7 +117,7 @@ class BasicErrorControllerMockMvcTests {
 		// And the rendered status code is always wrong (but would be 400 in a real
 		// system)
 		String content = response.getResponse().getContentAsString();
-		assertThat(content).contains("Validation failed");
+		assertThat(content).contains("Error count: 1");
 	}
 
 	@Test
@@ -180,7 +179,7 @@ class BasicErrorControllerMockMvcTests {
 			}
 
 			@RequestMapping("/noContent")
-			void noContent() {
+			void noContent() throws Exception {
 				throw new NoContentException("Expected!");
 			}
 
@@ -212,9 +211,9 @@ class BasicErrorControllerMockMvcTests {
 
 	private class ErrorDispatcher implements RequestBuilder {
 
-		private final MvcResult result;
+		private MvcResult result;
 
-		private final String path;
+		private String path;
 
 		ErrorDispatcher(MvcResult result, String path) {
 			this.result = result;

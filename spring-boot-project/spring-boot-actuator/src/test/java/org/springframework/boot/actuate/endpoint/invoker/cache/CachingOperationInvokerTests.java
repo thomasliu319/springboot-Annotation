@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import org.springframework.boot.actuate.endpoint.ApiVersion;
 import org.springframework.boot.actuate.endpoint.InvocationContext;
-import org.springframework.boot.actuate.endpoint.OperationArgumentResolver;
 import org.springframework.boot.actuate.endpoint.SecurityContext;
+import org.springframework.boot.actuate.endpoint.http.ApiVersion;
+import org.springframework.boot.actuate.endpoint.invoke.MissingParametersException;
 import org.springframework.boot.actuate.endpoint.invoke.OperationInvoker;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,11 +62,6 @@ class CachingOperationInvokerTests {
 	@Test
 	void cacheInTtlRangeWithNoParameter() {
 		assertCacheIsUsed(Collections.emptyMap());
-	}
-
-	@Test
-	void cacheInTtlWithPrincipal() {
-		assertCacheIsUsed(Collections.emptyMap(), mock(Principal.class));
 	}
 
 	@Test
@@ -102,17 +97,9 @@ class CachingOperationInvokerTests {
 	}
 
 	private void assertCacheIsUsed(Map<String, Object> parameters) {
-		assertCacheIsUsed(parameters, null);
-	}
-
-	private void assertCacheIsUsed(Map<String, Object> parameters, Principal principal) {
 		OperationInvoker target = mock(OperationInvoker.class);
 		Object expected = new Object();
-		SecurityContext securityContext = mock(SecurityContext.class);
-		if (principal != null) {
-			given(securityContext.getPrincipal()).willReturn(principal);
-		}
-		InvocationContext context = new InvocationContext(securityContext, parameters);
+		InvocationContext context = new InvocationContext(mock(SecurityContext.class), parameters);
 		given(target.invoke(context)).willReturn(expected);
 		CachingOperationInvoker invoker = new CachingOperationInvoker(target, CACHE_TTL);
 		Object response = invoker.invoke(context);
@@ -139,44 +126,18 @@ class CachingOperationInvokerTests {
 	}
 
 	@Test
-	void targetAlwaysInvokedWithDifferentPrincipals() {
+	void targetAlwaysInvokedWithPrincipal() {
 		OperationInvoker target = mock(OperationInvoker.class);
 		Map<String, Object> parameters = new HashMap<>();
 		SecurityContext securityContext = mock(SecurityContext.class);
-		given(securityContext.getPrincipal()).willReturn(mock(Principal.class), mock(Principal.class),
-				mock(Principal.class));
+		given(securityContext.getPrincipal()).willReturn(mock(Principal.class));
 		InvocationContext context = new InvocationContext(securityContext, parameters);
-		Object result1 = new Object();
-		Object result2 = new Object();
-		Object result3 = new Object();
-		given(target.invoke(context)).willReturn(result1, result2, result3);
+		given(target.invoke(context)).willReturn(new Object());
 		CachingOperationInvoker invoker = new CachingOperationInvoker(target, CACHE_TTL);
-		assertThat(invoker.invoke(context)).isEqualTo(result1);
-		assertThat(invoker.invoke(context)).isEqualTo(result2);
-		assertThat(invoker.invoke(context)).isEqualTo(result3);
+		invoker.invoke(context);
+		invoker.invoke(context);
+		invoker.invoke(context);
 		verify(target, times(3)).invoke(context);
-	}
-
-	@Test
-	void targetInvokedWhenCalledWithAndWithoutPrincipal() {
-		OperationInvoker target = mock(OperationInvoker.class);
-		Map<String, Object> parameters = new HashMap<>();
-		SecurityContext anonymous = mock(SecurityContext.class);
-		SecurityContext authenticated = mock(SecurityContext.class);
-		given(authenticated.getPrincipal()).willReturn(mock(Principal.class));
-		InvocationContext anonymousContext = new InvocationContext(anonymous, parameters);
-		Object anonymousResult = new Object();
-		given(target.invoke(anonymousContext)).willReturn(anonymousResult);
-		InvocationContext authenticatedContext = new InvocationContext(authenticated, parameters);
-		Object authenticatedResult = new Object();
-		given(target.invoke(authenticatedContext)).willReturn(authenticatedResult);
-		CachingOperationInvoker invoker = new CachingOperationInvoker(target, CACHE_TTL);
-		assertThat(invoker.invoke(anonymousContext)).isEqualTo(anonymousResult);
-		assertThat(invoker.invoke(authenticatedContext)).isEqualTo(authenticatedResult);
-		assertThat(invoker.invoke(anonymousContext)).isEqualTo(anonymousResult);
-		assertThat(invoker.invoke(authenticatedContext)).isEqualTo(authenticatedResult);
-		verify(target, times(1)).invoke(anonymousContext);
-		verify(target, times(1)).invoke(authenticatedContext);
 	}
 
 	@Test
@@ -200,10 +161,10 @@ class CachingOperationInvokerTests {
 		OperationInvoker target = mock(OperationInvoker.class);
 		Object expectedV2 = new Object();
 		Object expectedV3 = new Object();
-		InvocationContext contextV2 = new InvocationContext(mock(SecurityContext.class), Collections.emptyMap(),
-				new ApiVersionArgumentResolver(ApiVersion.V2));
-		InvocationContext contextV3 = new InvocationContext(mock(SecurityContext.class), Collections.emptyMap(),
-				new ApiVersionArgumentResolver(ApiVersion.V3));
+		InvocationContext contextV2 = new InvocationContext(ApiVersion.V2, mock(SecurityContext.class),
+				Collections.emptyMap());
+		InvocationContext contextV3 = new InvocationContext(ApiVersion.V3, mock(SecurityContext.class),
+				Collections.emptyMap());
 		given(target.invoke(contextV2)).willReturn(expectedV2);
 		given(target.invoke(contextV3)).willReturn(expectedV3);
 		CachingOperationInvoker invoker = new CachingOperationInvoker(target, CACHE_TTL);
@@ -220,7 +181,7 @@ class CachingOperationInvokerTests {
 		static AtomicInteger invocations = new AtomicInteger();
 
 		@Override
-		public Mono<String> invoke(InvocationContext context) {
+		public Mono<String> invoke(InvocationContext context) throws MissingParametersException {
 			return Mono.fromCallable(() -> {
 				invocations.incrementAndGet();
 				return "test";
@@ -234,29 +195,8 @@ class CachingOperationInvokerTests {
 		static AtomicInteger invocations = new AtomicInteger();
 
 		@Override
-		public Flux<String> invoke(InvocationContext context) {
+		public Flux<String> invoke(InvocationContext context) throws MissingParametersException {
 			return Flux.just("spring", "boot").hide().doFirst(invocations::incrementAndGet);
-		}
-
-	}
-
-	private static final class ApiVersionArgumentResolver implements OperationArgumentResolver {
-
-		private final ApiVersion apiVersion;
-
-		private ApiVersionArgumentResolver(ApiVersion apiVersion) {
-			this.apiVersion = apiVersion;
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> T resolve(Class<T> type) {
-			return (T) this.apiVersion;
-		}
-
-		@Override
-		public boolean canResolve(Class<?> type) {
-			return ApiVersion.class.equals(type);
 		}
 
 	}

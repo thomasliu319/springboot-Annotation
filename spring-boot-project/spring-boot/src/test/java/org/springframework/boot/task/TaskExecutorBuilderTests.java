@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -76,7 +77,7 @@ class TaskExecutorBuilderTests {
 	void taskDecoratorShouldApply() {
 		TaskDecorator taskDecorator = mock(TaskDecorator.class);
 		ThreadPoolTaskExecutor executor = this.builder.taskDecorator(taskDecorator).build();
-		assertThat(executor).extracting("taskDecorator").isSameAs(taskDecorator);
+		assertThat(ReflectionTestUtils.getField(executor, "taskDecorator")).isSameAs(taskDecorator);
 	}
 
 	@Test

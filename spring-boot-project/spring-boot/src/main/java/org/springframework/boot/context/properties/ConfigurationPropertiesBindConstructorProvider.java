@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ class ConfigurationPropertiesBindConstructorProvider implements BindConstructorP
 			return null;
 		}
 		Constructor<?> constructor = findConstructorBindingAnnotatedConstructor(type);
-		if (constructor == null && (isConstructorBindingType(type) || isNestedConstructorBinding)) {
+		if (constructor == null && (isConstructorBindingAnnotatedType(type) || isNestedConstructorBinding)) {
 			constructor = deduceBindConstructor(type);
 		}
 		return constructor;
@@ -67,22 +67,13 @@ class ConfigurationPropertiesBindConstructorProvider implements BindConstructorP
 		for (Constructor<?> candidate : candidates) {
 			if (MergedAnnotations.from(candidate).isPresent(ConstructorBinding.class)) {
 				Assert.state(candidate.getParameterCount() > 0,
-						() -> type.getName() + " declares @ConstructorBinding on a no-args constructor");
+						type.getName() + " declares @ConstructorBinding on a no-args constructor");
 				Assert.state(constructor == null,
-						() -> type.getName() + " has more than one @ConstructorBinding constructor");
+						type.getName() + " has more than one @ConstructorBinding constructor");
 				constructor = candidate;
 			}
 		}
 		return constructor;
-	}
-
-	private boolean isConstructorBindingType(Class<?> type) {
-		return isImplicitConstructorBindingType(type) || isConstructorBindingAnnotatedType(type);
-	}
-
-	private boolean isImplicitConstructorBindingType(Class<?> type) {
-		Class<?> superclass = type.getSuperclass();
-		return (superclass != null) && "java.lang.Record".equals(superclass.getName());
 	}
 
 	private boolean isConstructorBindingAnnotatedType(Class<?> type) {

@@ -66,9 +66,9 @@ class CorsSampleActuatorApplicationTests {
 
 	@Test
 	void preflightRequestToEndpointShouldReturnOk() throws Exception {
-		RequestEntity<?> envRequest = RequestEntity.options(new URI("/actuator/env"))
+		RequestEntity<?> healthRequest = RequestEntity.options(new URI("/actuator/env"))
 				.header("Origin", "http://localhost:8080").header("Access-Control-Request-Method", "GET").build();
-		ResponseEntity<?> exchange = this.testRestTemplate.exchange(envRequest, Map.class);
+		ResponseEntity<?> exchange = this.testRestTemplate.exchange(healthRequest, Map.class);
 		assertThat(exchange.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 

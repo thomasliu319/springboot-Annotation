@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
-import org.junit.platform.launcher.Launcher;
-import org.junit.platform.launcher.LauncherDiscoveryRequest;
-import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
-import org.junit.platform.launcher.core.LauncherFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.testsupport.junit.platform.Launcher;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequest;
+import org.springframework.boot.testsupport.junit.platform.LauncherDiscoveryRequestBuilder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -46,25 +45,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Andy Wilkinson
  */
 @ExtendWith(OutputCaptureExtension.class)
-@TestMethodOrder(MethodOrderer.MethodName.class)
+@TestMethodOrder(MethodOrderer.Alphanumeric.class)
 class WebMvcTestPrintDefaultIntegrationTests {
 
 	@Test
-	void shouldNotPrint(CapturedOutput output) {
+	void shouldNotPrint(CapturedOutput output) throws Throwable {
 		executeTests(ShouldNotPrint.class);
 		assertThat(output).doesNotContain("HTTP Method");
 	}
 
 	@Test
-	void shouldPrint(CapturedOutput output) {
+	void shouldPrint(CapturedOutput output) throws Throwable {
 		executeTests(ShouldPrint.class);
 		assertThat(output).containsOnlyOnce("HTTP Method");
 	}
 
-	private void executeTests(Class<?> testClass) {
-		LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+	private void executeTests(Class<?> testClass) throws Throwable {
+		ClassLoader classLoader = testClass.getClassLoader();
+		LauncherDiscoveryRequest request = new LauncherDiscoveryRequestBuilder(classLoader)
 				.selectors(DiscoverySelectors.selectClass(testClass)).build();
-		Launcher launcher = LauncherFactory.create();
+		Launcher launcher = new Launcher(testClass.getClassLoader());
 		launcher.execute(request);
 	}
 

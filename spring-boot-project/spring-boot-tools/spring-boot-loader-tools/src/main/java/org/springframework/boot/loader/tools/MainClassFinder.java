@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,71 +64,71 @@ public abstract class MainClassFinder {
 
 	private static final FileFilter CLASS_FILE_FILTER = MainClassFinder::isClassFile;
 
-	private static final FileFilter PACKAGE_DIRECTORY_FILTER = MainClassFinder::isPackageDirectory;
+	private static final FileFilter PACKAGE_FOLDER_FILTER = MainClassFinder::isPackageFolder;
 
 	private static boolean isClassFile(File file) {
 		return file.isFile() && file.getName().endsWith(DOT_CLASS);
 	}
 
-	private static boolean isPackageDirectory(File file) {
+	private static boolean isPackageFolder(File file) {
 		return file.isDirectory() && !file.getName().startsWith(".");
 	}
 
 	/**
-	 * Find the main class from a given directory.
-	 * @param rootDirectory the root directory to search
+	 * Find the main class from a given folder.
+	 * @param rootFolder the root folder to search
 	 * @return the main class or {@code null}
-	 * @throws IOException if the directory cannot be read
+	 * @throws IOException if the folder cannot be read
 	 */
-	public static String findMainClass(File rootDirectory) throws IOException {
-		return doWithMainClasses(rootDirectory, MainClass::getName);
+	public static String findMainClass(File rootFolder) throws IOException {
+		return doWithMainClasses(rootFolder, MainClass::getName);
 	}
 
 	/**
-	 * Find a single main class from the given {@code rootDirectory}.
-	 * @param rootDirectory the root directory to search
+	 * Find a single main class from the given {@code rootFolder}.
+	 * @param rootFolder the root folder to search
 	 * @return the main class or {@code null}
-	 * @throws IOException if the directory cannot be read
+	 * @throws IOException if the folder cannot be read
 	 */
-	public static String findSingleMainClass(File rootDirectory) throws IOException {
-		return findSingleMainClass(rootDirectory, null);
+	public static String findSingleMainClass(File rootFolder) throws IOException {
+		return findSingleMainClass(rootFolder, null);
 	}
 
 	/**
-	 * Find a single main class from the given {@code rootDirectory}. A main class
-	 * annotated with an annotation with the given {@code annotationName} will be
-	 * preferred over a main class with no such annotation.
-	 * @param rootDirectory the root directory to search
+	 * Find a single main class from the given {@code rootFolder}. A main class annotated
+	 * with an annotation with the given {@code annotationName} will be preferred over a
+	 * main class with no such annotation.
+	 * @param rootFolder the root folder to search
 	 * @param annotationName the name of the annotation that may be present on the main
 	 * class
 	 * @return the main class or {@code null}
-	 * @throws IOException if the directory cannot be read
+	 * @throws IOException if the folder cannot be read
 	 */
-	public static String findSingleMainClass(File rootDirectory, String annotationName) throws IOException {
+	public static String findSingleMainClass(File rootFolder, String annotationName) throws IOException {
 		SingleMainClassCallback callback = new SingleMainClassCallback(annotationName);
-		MainClassFinder.doWithMainClasses(rootDirectory, callback);
+		MainClassFinder.doWithMainClasses(rootFolder, callback);
 		return callback.getMainClassName();
 	}
 
 	/**
 	 * Perform the given callback operation on all main classes from the given root
-	 * directory.
+	 * folder.
 	 * @param <T> the result type
-	 * @param rootDirectory the root directory
+	 * @param rootFolder the root folder
 	 * @param callback the callback
 	 * @return the first callback result or {@code null}
 	 * @throws IOException in case of I/O errors
 	 */
-	static <T> T doWithMainClasses(File rootDirectory, MainClassCallback<T> callback) throws IOException {
-		if (!rootDirectory.exists()) {
+	static <T> T doWithMainClasses(File rootFolder, MainClassCallback<T> callback) throws IOException {
+		if (!rootFolder.exists()) {
 			return null; // nothing to do
 		}
-		if (!rootDirectory.isDirectory()) {
-			throw new IllegalArgumentException("Invalid root directory '" + rootDirectory + "'");
+		if (!rootFolder.isDirectory()) {
+			throw new IllegalArgumentException("Invalid root folder '" + rootFolder + "'");
 		}
-		String prefix = rootDirectory.getAbsolutePath() + "/";
+		String prefix = rootFolder.getAbsolutePath() + "/";
 		Deque<File> stack = new ArrayDeque<>();
-		stack.push(rootDirectory);
+		stack.push(rootFolder);
 		while (!stack.isEmpty()) {
 			File file = stack.pop();
 			if (file.isFile()) {
@@ -144,7 +144,7 @@ public abstract class MainClassFinder {
 				}
 			}
 			if (file.isDirectory()) {
-				pushAllSorted(stack, file.listFiles(PACKAGE_DIRECTORY_FILTER));
+				pushAllSorted(stack, file.listFiles(PACKAGE_FOLDER_FILTER));
 				pushAllSorted(stack, file.listFiles(CLASS_FILE_FILTER));
 			}
 		}
@@ -381,7 +381,10 @@ public abstract class MainClassFinder {
 				return false;
 			}
 			MainClass other = (MainClass) obj;
-			return this.name.equals(other.name);
+			if (!this.name.equals(other.name)) {
+				return false;
+			}
+			return true;
 		}
 
 		@Override

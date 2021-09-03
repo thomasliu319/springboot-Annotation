@@ -28,7 +28,6 @@ import java.util.Enumeration;
 import java.util.Set;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
 import org.junit.jupiter.api.AfterEach;
@@ -151,12 +150,6 @@ class JarFileWrapperTests {
 				.isThrownBy(() -> JarFileWrapper.class.getDeclaredMethod("close"));
 	}
 
-	@Test
-	void streamDelegatesToParent() {
-		this.wrapper.stream();
-		this.parent.verify(Call.STREAM);
-	}
-
 	/**
 	 * {@link JarFile} that we can spy (even on Java 11+)
 	 */
@@ -184,12 +177,6 @@ class JarFileWrapperTests {
 		public Enumeration<java.util.jar.JarEntry> entries() {
 			mark(Call.ENTRIES);
 			return super.entries();
-		}
-
-		@Override
-		public Stream<java.util.jar.JarEntry> stream() {
-			mark(Call.STREAM);
-			return super.stream();
 		}
 
 		@Override
@@ -270,9 +257,7 @@ class JarFileWrapperTests {
 
 			GET_COMMENT,
 
-			SIZE,
-
-			STREAM
+			SIZE
 
 		}
 

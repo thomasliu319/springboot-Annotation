@@ -28,6 +28,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jdbc.repository.config.AbstractJdbcConfiguration;
 import org.springframework.data.jdbc.repository.config.EnableJdbcRepositories;
+import org.springframework.data.jdbc.repository.config.JdbcConfiguration;
 import org.springframework.data.jdbc.repository.config.JdbcRepositoryConfigExtension;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -44,6 +45,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * @since 2.1.0
  * @see EnableJdbcRepositories
  */
+@SuppressWarnings("deprecation")
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnBean({ NamedParameterJdbcOperations.class, PlatformTransactionManager.class })
 @ConditionalOnClass({ NamedParameterJdbcOperations.class, AbstractJdbcConfiguration.class })
@@ -60,7 +62,7 @@ public class JdbcRepositoriesAutoConfiguration {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@ConditionalOnMissingBean(AbstractJdbcConfiguration.class)
+	@ConditionalOnMissingBean({ AbstractJdbcConfiguration.class, JdbcConfiguration.class })
 	static class SpringBootJdbcConfiguration extends AbstractJdbcConfiguration {
 
 	}

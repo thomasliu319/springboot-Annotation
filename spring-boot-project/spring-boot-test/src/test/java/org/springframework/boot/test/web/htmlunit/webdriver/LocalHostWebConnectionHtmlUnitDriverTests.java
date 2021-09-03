@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,9 @@ import com.gargoylesoftware.htmlunit.WebConsole;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebWindow;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 import org.openqa.selenium.Capabilities;
 
 import org.springframework.core.env.Environment;
@@ -46,13 +45,13 @@ import static org.mockito.Mockito.verify;
  *
  * @author Phillip Webb
  */
-@ExtendWith(MockitoExtension.class)
 class LocalHostWebConnectionHtmlUnitDriverTests {
 
-	private final WebClient webClient;
+	@Mock
+	private WebClient webClient;
 
-	LocalHostWebConnectionHtmlUnitDriverTests(@Mock WebClient webClient) {
-		this.webClient = webClient;
+	LocalHostWebConnectionHtmlUnitDriverTests() {
+		MockitoAnnotations.initMocks(this);
 		given(this.webClient.getOptions()).willReturn(new WebClientOptions());
 		given(this.webClient.getWebConsole()).willReturn(new WebConsole());
 	}

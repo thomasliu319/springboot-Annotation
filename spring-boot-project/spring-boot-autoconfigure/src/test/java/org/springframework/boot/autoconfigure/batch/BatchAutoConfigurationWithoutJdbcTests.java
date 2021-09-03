@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ class BatchAutoConfigurationWithoutJdbcTests {
 	@Test
 	void whenThereIsNoJdbcOnTheClasspathThenComponentsAreStillAutoConfigured() {
 		this.contextRunner.run((context) -> {
-			assertThat(context).hasSingleBean(JobLauncherApplicationRunner.class);
+			assertThat(context).hasSingleBean(JobLauncherCommandLineRunner.class);
 			assertThat(context).hasSingleBean(JobExecutionExitCodeGenerator.class);
 			assertThat(context).hasSingleBean(SimpleJobOperator.class);
 		});
@@ -60,22 +60,22 @@ class BatchAutoConfigurationWithoutJdbcTests {
 	static class BatchConfiguration implements BatchConfigurer {
 
 		@Override
-		public JobRepository getJobRepository() {
+		public JobRepository getJobRepository() throws Exception {
 			return mock(JobRepository.class);
 		}
 
 		@Override
-		public PlatformTransactionManager getTransactionManager() {
+		public PlatformTransactionManager getTransactionManager() throws Exception {
 			return mock(PlatformTransactionManager.class);
 		}
 
 		@Override
-		public JobLauncher getJobLauncher() {
+		public JobLauncher getJobLauncher() throws Exception {
 			return mock(JobLauncher.class);
 		}
 
 		@Override
-		public JobExplorer getJobExplorer() {
+		public JobExplorer getJobExplorer() throws Exception {
 			return mock(JobExplorer.class);
 		}
 

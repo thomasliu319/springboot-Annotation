@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  */
 
 package org.springframework.boot.context.properties.source;
-
-import java.util.Collections;
-import java.util.List;
 
 import org.springframework.util.ObjectUtils;
 
@@ -35,57 +32,57 @@ final class DefaultPropertyMapper implements PropertyMapper {
 
 	public static final PropertyMapper INSTANCE = new DefaultPropertyMapper();
 
-	private LastMapping<ConfigurationPropertyName, List<String>> lastMappedConfigurationPropertyName;
+	private LastMapping<ConfigurationPropertyName> lastMappedConfigurationPropertyName;
 
-	private LastMapping<String, ConfigurationPropertyName> lastMappedPropertyName;
+	private LastMapping<String> lastMappedPropertyName;
 
 	private DefaultPropertyMapper() {
 	}
 
 	@Override
-	public List<String> map(ConfigurationPropertyName configurationPropertyName) {
+	public PropertyMapping[] map(ConfigurationPropertyName configurationPropertyName) {
 		// Use a local copy in case another thread changes things
-		LastMapping<ConfigurationPropertyName, List<String>> last = this.lastMappedConfigurationPropertyName;
+		LastMapping<ConfigurationPropertyName> last = this.lastMappedConfigurationPropertyName;
 		if (last != null && last.isFrom(configurationPropertyName)) {
 			return last.getMapping();
 		}
 		String convertedName = configurationPropertyName.toString();
-		List<String> mapping = Collections.singletonList(convertedName);
+		PropertyMapping[] mapping = { new PropertyMapping(convertedName, configurationPropertyName) };
 		this.lastMappedConfigurationPropertyName = new LastMapping<>(configurationPropertyName, mapping);
 		return mapping;
 	}
 
 	@Override
-	public ConfigurationPropertyName map(String propertySourceName) {
+	public PropertyMapping[] map(String propertySourceName) {
 		// Use a local copy in case another thread changes things
-		LastMapping<String, ConfigurationPropertyName> last = this.lastMappedPropertyName;
+		LastMapping<String> last = this.lastMappedPropertyName;
 		if (last != null && last.isFrom(propertySourceName)) {
 			return last.getMapping();
 		}
-		ConfigurationPropertyName mapping = tryMap(propertySourceName);
+		PropertyMapping[] mapping = tryMap(propertySourceName);
 		this.lastMappedPropertyName = new LastMapping<>(propertySourceName, mapping);
 		return mapping;
 	}
 
-	private ConfigurationPropertyName tryMap(String propertySourceName) {
+	private PropertyMapping[] tryMap(String propertySourceName) {
 		try {
 			ConfigurationPropertyName convertedName = ConfigurationPropertyName.adapt(propertySourceName, '.');
 			if (!convertedName.isEmpty()) {
-				return convertedName;
+				return new PropertyMapping[] { new PropertyMapping(propertySourceName, convertedName) };
 			}
 		}
 		catch (Exception ex) {
 		}
-		return ConfigurationPropertyName.EMPTY;
+		return NO_MAPPINGS;
 	}
 
-	private static class LastMapping<T, M> {
+	private static class LastMapping<T> {
 
 		private final T from;
 
-		private final M mapping;
+		private final PropertyMapping[] mapping;
 
-		LastMapping(T from, M mapping) {
+		LastMapping(T from, PropertyMapping[] mapping) {
 			this.from = from;
 			this.mapping = mapping;
 		}
@@ -94,7 +91,7 @@ final class DefaultPropertyMapper implements PropertyMapper {
 			return ObjectUtils.nullSafeEquals(from, this.from);
 		}
 
-		M getMapping() {
+		PropertyMapping[] getMapping() {
 			return this.mapping;
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,16 @@ package org.springframework.boot.actuate.autoconfigure.endpoint.web.jersey;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.model.Resource;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
 import org.springframework.boot.actuate.autoconfigure.web.ManagementContextConfiguration;
-import org.springframework.boot.actuate.autoconfigure.web.jersey.ManagementContextResourceConfigCustomizer;
-import org.springframework.boot.actuate.autoconfigure.web.server.ConditionalOnManagementPort;
 import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
-import org.springframework.boot.actuate.endpoint.EndpointId;
 import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver;
@@ -41,17 +36,14 @@ import org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes;
 import org.springframework.boot.actuate.endpoint.web.ExposableServletEndpoint;
 import org.springframework.boot.actuate.endpoint.web.ExposableWebEndpoint;
 import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
-import org.springframework.boot.actuate.endpoint.web.WebServerNamespace;
 import org.springframework.boot.actuate.endpoint.web.annotation.ServletEndpointsSupplier;
 import org.springframework.boot.actuate.endpoint.web.jersey.JerseyEndpointResourceFactory;
-import org.springframework.boot.actuate.endpoint.web.jersey.JerseyHealthEndpointAdditionalPathResourceFactory;
-import org.springframework.boot.actuate.health.HealthEndpoint;
-import org.springframework.boot.actuate.health.HealthEndpointGroups;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type;
+import org.springframework.boot.autoconfigure.jersey.ResourceConfigCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
@@ -73,39 +65,30 @@ import org.springframework.util.StringUtils;
 @ConditionalOnMissingBean(type = "org.springframework.web.servlet.DispatcherServlet")
 class JerseyWebEndpointManagementContextConfiguration {
 
-	private static final EndpointId HEALTH_ENDPOINT_ID = EndpointId.of("health");
-
 	@Bean
 	JerseyWebEndpointsResourcesRegistrar jerseyWebEndpointsResourcesRegistrar(Environment environment,
-			WebEndpointsSupplier webEndpointsSupplier, ServletEndpointsSupplier servletEndpointsSupplier,
-			EndpointMediaTypes endpointMediaTypes, WebEndpointProperties webEndpointProperties) {
+			ObjectProvider<ResourceConfig> resourceConfig, WebEndpointsSupplier webEndpointsSupplier,
+			ServletEndpointsSupplier servletEndpointsSupplier, EndpointMediaTypes endpointMediaTypes,
+			WebEndpointProperties webEndpointProperties) {
 		String basePath = webEndpointProperties.getBasePath();
-		boolean shouldRegisterLinks = shouldRegisterLinksMapping(webEndpointProperties, environment, basePath);
-		return new JerseyWebEndpointsResourcesRegistrar(webEndpointsSupplier, servletEndpointsSupplier,
-				endpointMediaTypes, basePath, shouldRegisterLinks);
+		boolean shouldRegisterLinks = shouldRegisterLinksMapping(environment, basePath);
+		shouldRegisterLinksMapping(environment, basePath);
+		return new JerseyWebEndpointsResourcesRegistrar(resourceConfig.getIfAvailable(), webEndpointsSupplier,
+				servletEndpointsSupplier, endpointMediaTypes, basePath, shouldRegisterLinks);
 	}
 
-	@Bean
-	@ConditionalOnBean(HealthEndpoint.class)
-	@ConditionalOnManagementPort(ManagementPortType.DIFFERENT)
-	JerseyAdditionalHealthEndpointPathsManagementResourcesRegistrar jerseyDifferentPortAdditionalHealthEndpointPathsResourcesRegistrar(
-			WebEndpointsSupplier webEndpointsSupplier, HealthEndpointGroups healthEndpointGroups) {
-		Collection<ExposableWebEndpoint> webEndpoints = webEndpointsSupplier.getEndpoints();
-		ExposableWebEndpoint health = webEndpoints.stream()
-				.filter((endpoint) -> endpoint.getEndpointId().equals(HEALTH_ENDPOINT_ID)).findFirst().get();
-		return new JerseyAdditionalHealthEndpointPathsManagementResourcesRegistrar(health, healthEndpointGroups);
-	}
-
-	private boolean shouldRegisterLinksMapping(WebEndpointProperties properties, Environment environment,
-			String basePath) {
-		return properties.getDiscovery().isEnabled() && (StringUtils.hasText(basePath)
-				|| ManagementPortType.get(environment).equals(ManagementPortType.DIFFERENT));
+	private boolean shouldRegisterLinksMapping(Environment environment, String basePath) {
+		return StringUtils.hasText(basePath)
+				|| ManagementPortType.get(environment).equals(ManagementPortType.DIFFERENT);
 	}
 
 	/**
-	 * Register endpoints with the {@link ResourceConfig} for the management context.
+	 * Register endpoints with the {@link ResourceConfig}. The
+	 * {@link ResourceConfigCustomizer} cannot be used because we don't want to apply
 	 */
-	static class JerseyWebEndpointsResourcesRegistrar implements ManagementContextResourceConfigCustomizer {
+	static class JerseyWebEndpointsResourcesRegistrar {
+
+		private final ResourceConfig resourceConfig;
 
 		private final WebEndpointsSupplier webEndpointsSupplier;
 
@@ -117,29 +100,33 @@ class JerseyWebEndpointManagementContextConfiguration {
 
 		private final boolean shouldRegisterLinks;
 
-		JerseyWebEndpointsResourcesRegistrar(WebEndpointsSupplier webEndpointsSupplier,
+		JerseyWebEndpointsResourcesRegistrar(ResourceConfig resourceConfig, WebEndpointsSupplier webEndpointsSupplier,
 				ServletEndpointsSupplier servletEndpointsSupplier, EndpointMediaTypes endpointMediaTypes,
 				String basePath, boolean shouldRegisterLinks) {
+			super();
+			this.resourceConfig = resourceConfig;
 			this.webEndpointsSupplier = webEndpointsSupplier;
 			this.servletEndpointsSupplier = servletEndpointsSupplier;
 			this.mediaTypes = endpointMediaTypes;
 			this.basePath = basePath;
 			this.shouldRegisterLinks = shouldRegisterLinks;
+			register();
 		}
 
-		@Override
-		public void customize(ResourceConfig config) {
-			register(config);
-		}
-
-		private void register(ResourceConfig config) {
+		private void register() {
+			// We can't easily use @ConditionalOnBean because @AutoConfigureBefore is
+			// not an option for management contexts. Instead we manually check if
+			// the resource config bean exists
+			if (this.resourceConfig == null) {
+				return;
+			}
 			Collection<ExposableWebEndpoint> webEndpoints = this.webEndpointsSupplier.getEndpoints();
 			Collection<ExposableServletEndpoint> servletEndpoints = this.servletEndpointsSupplier.getEndpoints();
 			EndpointLinksResolver linksResolver = getLinksResolver(webEndpoints, servletEndpoints);
 			EndpointMapping mapping = new EndpointMapping(this.basePath);
-			Collection<Resource> endpointResources = new JerseyEndpointResourceFactory().createEndpointResources(
-					mapping, webEndpoints, this.mediaTypes, linksResolver, this.shouldRegisterLinks);
-			register(endpointResources, config);
+			JerseyEndpointResourceFactory resourceFactory = new JerseyEndpointResourceFactory();
+			register(resourceFactory.createEndpointResources(mapping, webEndpoints, this.mediaTypes, linksResolver,
+					this.shouldRegisterLinks));
 		}
 
 		private EndpointLinksResolver getLinksResolver(Collection<ExposableWebEndpoint> webEndpoints,
@@ -150,42 +137,8 @@ class JerseyWebEndpointManagementContextConfiguration {
 			return new EndpointLinksResolver(endpoints, this.basePath);
 		}
 
-		private void register(Collection<Resource> resources, ResourceConfig config) {
-			config.registerResources(new HashSet<>(resources));
-		}
-
-	}
-
-	class JerseyAdditionalHealthEndpointPathsManagementResourcesRegistrar
-			implements ManagementContextResourceConfigCustomizer {
-
-		private final ExposableWebEndpoint endpoint;
-
-		private final HealthEndpointGroups groups;
-
-		JerseyAdditionalHealthEndpointPathsManagementResourcesRegistrar(ExposableWebEndpoint endpoint,
-				HealthEndpointGroups groups) {
-			this.endpoint = endpoint;
-			this.groups = groups;
-		}
-
-		@Override
-		public void customize(ResourceConfig config) {
-			register(config);
-		}
-
-		private void register(ResourceConfig config) {
-			EndpointMapping mapping = new EndpointMapping("");
-			JerseyHealthEndpointAdditionalPathResourceFactory resourceFactory = new JerseyHealthEndpointAdditionalPathResourceFactory(
-					WebServerNamespace.MANAGEMENT, this.groups);
-			Collection<Resource> endpointResources = resourceFactory
-					.createEndpointResources(mapping, Collections.singletonList(this.endpoint), null, null, false)
-					.stream().filter(Objects::nonNull).collect(Collectors.toList());
-			register(endpointResources, config);
-		}
-
-		private void register(Collection<Resource> resources, ResourceConfig config) {
-			config.registerResources(new HashSet<>(resources));
+		private void register(Collection<Resource> resources) {
+			this.resourceConfig.registerResources(new HashSet<>(resources));
 		}
 
 	}

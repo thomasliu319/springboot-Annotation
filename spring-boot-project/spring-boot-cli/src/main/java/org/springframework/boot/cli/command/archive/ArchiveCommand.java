@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.boot.cli.command.archive;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -174,7 +175,7 @@ abstract class ArchiveCommand extends OptionParsingCommand {
 		}
 
 		private void writeJar(File file, Class<?>[] compiledClasses, List<MatchedResource> classpathEntries,
-				List<URL> dependencies) throws IOException, URISyntaxException {
+				List<URL> dependencies) throws FileNotFoundException, IOException, URISyntaxException {
 			final List<Library> libraries;
 			try (JarWriter writer = new JarWriter(file)) {
 				addManifest(writer, compiledClasses);
@@ -198,7 +199,7 @@ abstract class ArchiveCommand extends OptionParsingCommand {
 			List<Library> libraries = new ArrayList<>();
 			for (URL dependency : dependencies) {
 				File file = new File(dependency.toURI());
-				libraries.add(new Library(null, file, getLibraryScope(file), null, false, false, true));
+				libraries.add(new Library(file, getLibraryScope(file)));
 			}
 			return libraries;
 		}
@@ -256,7 +257,7 @@ abstract class ArchiveCommand extends OptionParsingCommand {
 			List<Library> libraries = new ArrayList<>();
 			for (MatchedResource entry : entries) {
 				if (entry.isRoot()) {
-					libraries.add(new Library(null, entry.getFile(), LibraryScope.COMPILE, null, false, false, true));
+					libraries.add(new Library(entry.getFile(), LibraryScope.COMPILE));
 				}
 				else {
 					writeClasspathEntry(writer, entry);

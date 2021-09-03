@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,21 @@
 
 package org.springframework.boot.autoconfigure.http;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
+import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
 import org.springframework.http.converter.xml.AbstractXmlHttpMessageConverter;
 import org.springframework.http.converter.xml.MappingJackson2XmlHttpMessageConverter;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
@@ -43,8 +44,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
  * needed, otherwise default converters will be used.
  * <p>
  * NOTE: The default converters used are the same as standard Spring MVC (see
- * {@link WebMvcConfigurationSupport}) with some slight re-ordering to put XML converters
- * at the back of the list.
+ * {@link WebMvcConfigurationSupport#getMessageConverters} with some slight re-ordering to
+ * put XML converters at the back of the list.
  *
  * @author Dave Syer
  * @author Phillip Webb
@@ -63,15 +64,6 @@ public class HttpMessageConverters implements Iterable<HttpMessageConverter<?>> 
 		addClassIfExists(nonReplacingConverters,
 				"org.springframework.hateoas.server.mvc.TypeConstrainedMappingJackson2HttpMessageConverter");
 		NON_REPLACING_CONVERTERS = Collections.unmodifiableList(nonReplacingConverters);
-	}
-
-	private static final Map<Class<?>, Class<?>> EQUIVALENT_CONVERTERS;
-
-	static {
-		Map<Class<?>, Class<?>> equivalentConverters = new HashMap<>();
-		putIfExists(equivalentConverters, "org.springframework.http.converter.json.MappingJackson2HttpMessageConverter",
-				"org.springframework.http.converter.json.GsonHttpMessageConverter");
-		EQUIVALENT_CONVERTERS = Collections.unmodifiableMap(equivalentConverters);
 	}
 
 	private final List<HttpMessageConverter<?>> converters;
@@ -143,20 +135,22 @@ public class HttpMessageConverters implements Iterable<HttpMessageConverter<?>> 
 				return false;
 			}
 		}
-		Class<?> converterClass = defaultConverter.getClass();
-		if (ClassUtils.isAssignableValue(converterClass, candidate)) {
-			return true;
-		}
-		Class<?> equivalentClass = EQUIVALENT_CONVERTERS.get(converterClass);
-		return equivalentClass != null && ClassUtils.isAssignableValue(equivalentClass, candidate);
+		return ClassUtils.isAssignableValue(defaultConverter.getClass(), candidate);
 	}
 
 	private void configurePartConverters(AllEncompassingFormHttpMessageConverter formConverter,
 			Collection<HttpMessageConverter<?>> converters) {
-		List<HttpMessageConverter<?>> partConverters = formConverter.getPartConverters();
+		List<HttpMessageConverter<?>> partConverters = extractPartConverters(formConverter);
 		List<HttpMessageConverter<?>> combinedConverters = getCombinedConverters(converters, partConverters);
 		combinedConverters = postProcessPartConverters(combinedConverters);
 		formConverter.setPartConverters(combinedConverters);
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<HttpMessageConverter<?>> extractPartConverters(FormHttpMessageConverter formConverter) {
+		Field field = ReflectionUtils.findField(FormHttpMessageConverter.class, "partConverters");
+		ReflectionUtils.makeAccessible(field);
+		return (List<HttpMessageConverter<?>>) ReflectionUtils.getField(field, formConverter);
 	}
 
 	/**
@@ -230,15 +224,6 @@ public class HttpMessageConverters implements Iterable<HttpMessageConverter<?>> 
 	private static void addClassIfExists(List<Class<?>> list, String className) {
 		try {
 			list.add(Class.forName(className));
-		}
-		catch (ClassNotFoundException | NoClassDefFoundError ex) {
-			// Ignore
-		}
-	}
-
-	private static void putIfExists(Map<Class<?>, Class<?>> map, String keyClassName, String valueClassName) {
-		try {
-			map.put(Class.forName(keyClassName), Class.forName(valueClassName));
 		}
 		catch (ClassNotFoundException | NoClassDefFoundError ex) {
 			// Ignore

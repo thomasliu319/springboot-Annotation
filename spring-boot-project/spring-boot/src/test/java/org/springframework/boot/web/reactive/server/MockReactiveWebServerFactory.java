@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.boot.web.reactive.server;
 import java.util.Map;
 
 import org.springframework.boot.web.server.WebServer;
+import org.springframework.boot.web.server.WebServerException;
 import org.springframework.http.server.reactive.HttpHandler;
 
 import static org.mockito.Mockito.spy;
@@ -69,12 +70,12 @@ public class MockReactiveWebServerFactory extends AbstractReactiveWebServerFacto
 		}
 
 		@Override
-		public void start() {
+		public void start() throws WebServerException {
 
 		}
 
 		@Override
-		public void stop() {
+		public void stop() throws WebServerException {
 
 		}
 

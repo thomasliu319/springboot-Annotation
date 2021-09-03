@@ -16,8 +16,6 @@
 
 package org.springframework.boot.gradle.tasks.buildinfo;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.HashMap;
@@ -25,7 +23,6 @@ import java.util.Map;
 
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 
@@ -38,8 +35,6 @@ import org.gradle.api.tasks.Optional;
 @SuppressWarnings("serial")
 public class BuildInfoProperties implements Serializable {
 
-	private transient Instant creationTime = Instant.now();
-
 	private final Property<String> group;
 
 	private final Property<String> artifact;
@@ -48,33 +43,20 @@ public class BuildInfoProperties implements Serializable {
 
 	private final Property<String> name;
 
-	private final Property<Long> time;
-
-	private boolean timeConfigured = false;
+	private final Property<Instant> time;
 
 	private Map<String, Object> additionalProperties = new HashMap<>();
 
 	BuildInfoProperties(Project project) {
-		this.time = project.getObjects().property(Long.class);
+		this.time = project.getObjects().property(Instant.class);
+		this.time.set(Instant.now());
 		this.group = project.getObjects().property(String.class);
 		this.group.set(project.provider(() -> project.getGroup().toString()));
 		this.artifact = project.getObjects().property(String.class);
 		this.version = project.getObjects().property(String.class);
-		this.version.set(projectVersion(project));
+		this.version.set(project.provider(() -> project.getVersion().toString()));
 		this.name = project.getObjects().property(String.class);
-		this.name.set(project.provider(project::getName));
-	}
-
-	private Provider<String> projectVersion(Project project) {
-		try {
-			Provider<String> externalVersionProperty = project.getProviders().gradleProperty("version")
-					.forUseAtConfigurationTime();
-			externalVersionProperty.getOrNull();
-		}
-		catch (NoSuchMethodError ex) {
-			// Gradle < 6.5
-		}
-		return project.provider(() -> project.getVersion().toString());
+		this.name.set(project.provider(() -> project.getName().toString()));
 	}
 
 	/**
@@ -160,14 +142,7 @@ public class BuildInfoProperties implements Serializable {
 	@Input
 	@Optional
 	public Instant getTime() {
-		Long epochMillis = this.time.getOrNull();
-		if (epochMillis != null) {
-			return Instant.ofEpochMilli(epochMillis);
-		}
-		if (this.timeConfigured) {
-			return null;
-		}
-		return this.creationTime;
+		return this.time.getOrNull();
 	}
 
 	/**
@@ -175,8 +150,7 @@ public class BuildInfoProperties implements Serializable {
 	 * @param time the build time
 	 */
 	public void setTime(Instant time) {
-		this.timeConfigured = true;
-		this.time.set((time != null) ? time.toEpochMilli() : null);
+		this.time.set(time);
 	}
 
 	/**
@@ -197,11 +171,6 @@ public class BuildInfoProperties implements Serializable {
 	 */
 	public void setAdditional(Map<String, Object> additionalProperties) {
 		this.additionalProperties = additionalProperties;
-	}
-
-	private void readObject(ObjectInputStream input) throws ClassNotFoundException, IOException {
-		input.defaultReadObject();
-		this.creationTime = Instant.now();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.RequestDispatcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
@@ -40,7 +38,6 @@ import org.springframework.web.servlet.ModelAndView;
  *
  * @author Dave Syer
  * @author Phillip Webb
- * @author Scott Frederick
  * @since 1.3.0
  * @see ErrorAttributes
  */
@@ -69,25 +66,13 @@ public abstract class AbstractErrorController implements ErrorController {
 		return sorted;
 	}
 
-	protected Map<String, Object> getErrorAttributes(HttpServletRequest request, ErrorAttributeOptions options) {
+	protected Map<String, Object> getErrorAttributes(HttpServletRequest request, boolean includeStackTrace) {
 		WebRequest webRequest = new ServletWebRequest(request);
-		return this.errorAttributes.getErrorAttributes(webRequest, options);
+		return this.errorAttributes.getErrorAttributes(webRequest, includeStackTrace);
 	}
 
 	protected boolean getTraceParameter(HttpServletRequest request) {
-		return getBooleanParameter(request, "trace");
-	}
-
-	protected boolean getMessageParameter(HttpServletRequest request) {
-		return getBooleanParameter(request, "message");
-	}
-
-	protected boolean getErrorsParameter(HttpServletRequest request) {
-		return getBooleanParameter(request, "errors");
-	}
-
-	protected boolean getBooleanParameter(HttpServletRequest request, String parameterName) {
-		String parameter = request.getParameter(parameterName);
+		String parameter = request.getParameter("trace");
 		if (parameter == null) {
 			return false;
 		}
@@ -95,7 +80,7 @@ public abstract class AbstractErrorController implements ErrorController {
 	}
 
 	protected HttpStatus getStatus(HttpServletRequest request) {
-		Integer statusCode = (Integer) request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
+		Integer statusCode = (Integer) request.getAttribute("javax.servlet.error.status_code");
 		if (statusCode == null) {
 			return HttpStatus.INTERNAL_SERVER_ERROR;
 		}

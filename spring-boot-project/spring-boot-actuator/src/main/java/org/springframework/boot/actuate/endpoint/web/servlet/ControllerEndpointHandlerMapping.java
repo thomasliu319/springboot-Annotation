@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEn
 import org.springframework.util.Assert;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.mvc.condition.PatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -57,7 +58,6 @@ public class ControllerEndpointHandlerMapping extends RequestMappingHandlerMappi
 	 * @param endpoints the web endpoints
 	 * @param corsConfiguration the CORS configuration for the endpoints or {@code null}
 	 */
-	@SuppressWarnings("deprecation")
 	public ControllerEndpointHandlerMapping(EndpointMapping endpointMapping,
 			Collection<ExposableControllerEndpoint> endpoints, CorsConfiguration corsConfiguration) {
 		Assert.notNull(endpointMapping, "EndpointMapping must not be null");
@@ -95,11 +95,19 @@ public class ControllerEndpointHandlerMapping extends RequestMappingHandlerMappi
 		}
 		String[] endpointMappedPatterns = patterns.stream()
 				.map((pattern) -> getEndpointMappedPattern(endpoint, pattern)).toArray(String[]::new);
-		return mapping.mutate().paths(endpointMappedPatterns).build();
+		return withNewPatterns(mapping, endpointMappedPatterns);
 	}
 
 	private String getEndpointMappedPattern(ExposableControllerEndpoint endpoint, String pattern) {
 		return this.endpointMapping.createSubPath(endpoint.getRootPath() + pattern);
+	}
+
+	private RequestMappingInfo withNewPatterns(RequestMappingInfo mapping, String[] patterns) {
+		PatternsRequestCondition patternsCondition = new PatternsRequestCondition(patterns, null, null,
+				useSuffixPatternMatch(), useTrailingSlashMatch(), null);
+		return new RequestMappingInfo(patternsCondition, mapping.getMethodsCondition(), mapping.getParamsCondition(),
+				mapping.getHeadersCondition(), mapping.getConsumesCondition(), mapping.getProducesCondition(),
+				mapping.getCustomCondition());
 	}
 
 	@Override

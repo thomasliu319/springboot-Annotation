@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.boot.actuate.redis;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.data.redis.connection.ClusterInfo;
 import org.springframework.data.redis.connection.RedisClusterConnection;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -31,10 +32,11 @@ import org.springframework.util.Assert;
  *
  * @author Christian Dupuis
  * @author Richard Santana
- * @author Scott Frederick
  * @since 2.0.0
  */
 public class RedisHealthIndicator extends AbstractHealthIndicator {
+
+	private static final String REDIS_VERSION_PROPERTY = "redis_version";
 
 	private final RedisConnectionFactory redisConnectionFactory;
 
@@ -51,16 +53,20 @@ public class RedisHealthIndicator extends AbstractHealthIndicator {
 			doHealthCheck(builder, connection);
 		}
 		finally {
-			RedisConnectionUtils.releaseConnection(connection, this.redisConnectionFactory);
+			RedisConnectionUtils.releaseConnection(connection, this.redisConnectionFactory, false);
 		}
 	}
 
 	private void doHealthCheck(Health.Builder builder, RedisConnection connection) {
 		if (connection instanceof RedisClusterConnection) {
-			RedisHealth.fromClusterInfo(builder, ((RedisClusterConnection) connection).clusterGetClusterInfo());
+			ClusterInfo clusterInfo = ((RedisClusterConnection) connection).clusterGetClusterInfo();
+			builder.up().withDetail("cluster_size", clusterInfo.getClusterSize())
+					.withDetail("slots_up", clusterInfo.getSlotsOk())
+					.withDetail("slots_fail", clusterInfo.getSlotsFail());
 		}
 		else {
-			RedisHealth.up(builder, connection.info("server"));
+			String version = connection.info("server").getProperty(REDIS_VERSION_PROPERTY);
+			builder.up().withDetail("version", version);
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package org.springframework.boot.actuate.autoconfigure.metrics;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 /**
@@ -43,7 +43,7 @@ public class MetricsProperties {
 	private boolean useGlobalRegistry = true;
 
 	/**
-	 * Whether meter IDs starting with the specified name should be enabled. The longest
+	 * Whether meter IDs starting-with the specified name should be enabled. The longest
 	 * match wins, the key `all` can also be used to configure all meters.
 	 */
 	private final Map<String, Boolean> enable = new LinkedHashMap<>();
@@ -54,8 +54,6 @@ public class MetricsProperties {
 	private final Map<String, String> tags = new LinkedHashMap<>();
 
 	private final Web web = new Web();
-
-	private final Data data = new Data();
 
 	private final Distribution distribution = new Distribution();
 
@@ -77,10 +75,6 @@ public class MetricsProperties {
 
 	public Web getWeb() {
 		return this.web;
-	}
-
-	public Data getData() {
-		return this.data;
 	}
 
 	public Distribution getDistribution() {
@@ -114,6 +108,28 @@ public class MetricsProperties {
 
 			public ClientRequest getRequest() {
 				return this.request;
+			}
+
+			/**
+			 * Return the name of the metric for client requests.
+			 * @return request metric name
+			 * @deprecated since 2.2.0 in favor of {@link ClientRequest#getMetricName()}
+			 */
+			@Deprecated
+			@DeprecatedConfigurationProperty(replacement = "management.metrics.web.client.request.metric-name")
+			public String getRequestsMetricName() {
+				return this.request.getMetricName();
+			}
+
+			/**
+			 * Set the name of the metric for client requests.
+			 * @param requestsMetricName request metric name
+			 * @deprecated since 2.2.0 in favor of
+			 * {@link ClientRequest#setMetricName(String)}
+			 */
+			@Deprecated
+			public void setRequestsMetricName(String requestsMetricName) {
+				this.request.setMetricName(requestsMetricName);
 			}
 
 			public int getMaxUriTags() {
@@ -168,6 +184,50 @@ public class MetricsProperties {
 				return this.request;
 			}
 
+			/**
+			 * Return whether server requests should be automatically timed.
+			 * @return {@code true} if server request should be automatically timed
+			 * @deprecated since 2.2.0 in favor of {@link AutoTimeProperties#isEnabled()}
+			 */
+			@DeprecatedConfigurationProperty(replacement = "management.metrics.web.server.request.autotime.enabled")
+			@Deprecated
+			public boolean isAutoTimeRequests() {
+				return this.request.getAutotime().isEnabled();
+			}
+
+			/**
+			 * Set whether server requests should be automatically timed.
+			 * @param autoTimeRequests whether server requests should be automatically
+			 * timed
+			 * @deprecated since 2.2.0 in favor of {@link AutoTimeProperties#isEnabled()}
+			 */
+			@Deprecated
+			public void setAutoTimeRequests(boolean autoTimeRequests) {
+				this.request.getAutotime().setEnabled(autoTimeRequests);
+			}
+
+			/**
+			 * Return name of the metric for server requests.
+			 * @return request metric name
+			 * @deprecated since 2.2.0 in favor of {@link ServerRequest#getMetricName()}
+			 */
+			@DeprecatedConfigurationProperty(replacement = "management.metrics.web.server.request.metric-name")
+			@Deprecated
+			public String getRequestsMetricName() {
+				return this.request.getMetricName();
+			}
+
+			/**
+			 * Set the name of the metric for server requests.
+			 * @param requestsMetricName request metric name
+			 * @deprecated since 2.2.0 in favor of
+			 * {@link ServerRequest#setMetricName(String)}
+			 */
+			@Deprecated
+			public void setRequestsMetricName(String requestsMetricName) {
+				this.request.setMetricName(requestsMetricName);
+			}
+
 			public int getMaxUriTags() {
 				return this.maxUriTags;
 			}
@@ -220,43 +280,6 @@ public class MetricsProperties {
 
 	}
 
-	public static class Data {
-
-		private final Repository repository = new Repository();
-
-		public Repository getRepository() {
-			return this.repository;
-		}
-
-		public static class Repository {
-
-			/**
-			 * Name of the metric for sent requests.
-			 */
-			private String metricName = "spring.data.repository.invocations";
-
-			/**
-			 * Auto-timed request settings.
-			 */
-			@NestedConfigurationProperty
-			private final AutoTimeProperties autotime = new AutoTimeProperties();
-
-			public String getMetricName() {
-				return this.metricName;
-			}
-
-			public void setMetricName(String metricName) {
-				this.metricName = metricName;
-			}
-
-			public AutoTimeProperties getAutotime() {
-				return this.autotime;
-			}
-
-		}
-
-	}
-
 	public static class Distribution {
 
 		/**
@@ -276,41 +299,26 @@ public class MetricsProperties {
 		private final Map<String, double[]> percentiles = new LinkedHashMap<>();
 
 		/**
-		 * Specific service-level objective boundaries for meter IDs starting with the
-		 * specified name. The longest match wins. Counters will be published for each
-		 * specified boundary. Values can be specified as a long or as a Duration value
-		 * (for timer meters, defaulting to ms if no unit specified).
+		 * Specific SLA boundaries for meter IDs starting-with the specified name. The
+		 * longest match wins. Counters will be published for each specified boundary.
+		 * Values can be specified as a long or as a Duration value (for timer meters,
+		 * defaulting to ms if no unit specified).
 		 */
-		private final Map<String, ServiceLevelObjectiveBoundary[]> slo = new LinkedHashMap<>();
+		private final Map<String, ServiceLevelAgreementBoundary[]> sla = new LinkedHashMap<>();
 
 		/**
-		 * Minimum value that meter IDs starting with the specified name are expected to
+		 * Minimum value that meter IDs starting-with the specified name are expected to
 		 * observe. The longest match wins. Values can be specified as a long or as a
 		 * Duration value (for timer meters, defaulting to ms if no unit specified).
 		 */
 		private final Map<String, String> minimumExpectedValue = new LinkedHashMap<>();
 
 		/**
-		 * Maximum value that meter IDs starting with the specified name are expected to
+		 * Maximum value that meter IDs starting-with the specified name are expected to
 		 * observe. The longest match wins. Values can be specified as a long or as a
 		 * Duration value (for timer meters, defaulting to ms if no unit specified).
 		 */
 		private final Map<String, String> maximumExpectedValue = new LinkedHashMap<>();
-
-		/**
-		 * Maximum amount of time that samples for meter IDs starting with the specified
-		 * name are accumulated to decaying distribution statistics before they are reset
-		 * and rotated. The longest match wins, the key `all` can also be used to
-		 * configure all meters.
-		 */
-		private final Map<String, Duration> expiry = new LinkedHashMap<>();
-
-		/**
-		 * Number of histograms for meter IDs starting with the specified name to keep in
-		 * the ring buffer. The longest match wins, the key `all` can also be used to
-		 * configure all meters.
-		 */
-		private final Map<String, Integer> bufferLength = new LinkedHashMap<>();
 
 		public Map<String, Boolean> getPercentilesHistogram() {
 			return this.percentilesHistogram;
@@ -320,8 +328,8 @@ public class MetricsProperties {
 			return this.percentiles;
 		}
 
-		public Map<String, ServiceLevelObjectiveBoundary[]> getSlo() {
-			return this.slo;
+		public Map<String, ServiceLevelAgreementBoundary[]> getSla() {
+			return this.sla;
 		}
 
 		public Map<String, String> getMinimumExpectedValue() {
@@ -330,14 +338,6 @@ public class MetricsProperties {
 
 		public Map<String, String> getMaximumExpectedValue() {
 			return this.maximumExpectedValue;
-		}
-
-		public Map<String, Duration> getExpiry() {
-			return this.expiry;
-		}
-
-		public Map<String, Integer> getBufferLength() {
-			return this.bufferLength;
 		}
 
 	}

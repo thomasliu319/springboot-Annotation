@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.boot.web.client;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -47,14 +48,14 @@ public class RestTemplateBuilderClientHttpRequestInitializerTests {
 	private final MockClientHttpRequest request = new MockClientHttpRequest();
 
 	@Test
-	void createRequestWhenHasBasicAuthAndNoAuthHeaderAddsHeader() {
+	void createRequestWhenHasBasicAuthAndNoAuthHeaderAddsHeader() throws IOException {
 		new RestTemplateBuilderClientHttpRequestInitializer(new BasicAuthentication("spring", "boot", null),
 				Collections.emptyMap(), Collections.emptySet()).initialize(this.request);
 		assertThat(this.request.getHeaders().get(HttpHeaders.AUTHORIZATION)).containsExactly("Basic c3ByaW5nOmJvb3Q=");
 	}
 
 	@Test
-	void createRequestWhenHasBasicAuthAndExistingAuthHeaderDoesNotAddHeader() {
+	void createRequestWhenHasBasicAuthAndExistingAuthHeaderDoesNotAddHeader() throws IOException {
 		this.request.getHeaders().setBasicAuth("boot", "spring");
 		new RestTemplateBuilderClientHttpRequestInitializer(new BasicAuthentication("spring", "boot", null),
 				Collections.emptyMap(), Collections.emptySet()).initialize(this.request);
@@ -62,7 +63,7 @@ public class RestTemplateBuilderClientHttpRequestInitializerTests {
 	}
 
 	@Test
-	void createRequestWhenHasDefaultHeadersAddsMissing() {
+	void createRequestWhenHasDefaultHeadersAddsMissing() throws IOException {
 		this.request.getHeaders().add("one", "existing");
 		Map<String, List<String>> defaultHeaders = new LinkedHashMap<>();
 		defaultHeaders.put("one", Collections.singletonList("1"));
@@ -77,7 +78,7 @@ public class RestTemplateBuilderClientHttpRequestInitializerTests {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void createRequestWhenHasRequestCustomizersAppliesThemInOrder() {
+	void createRequestWhenHasRequestCustomizersAppliesThemInOrder() throws IOException {
 		Set<RestTemplateRequestCustomizer<?>> customizers = new LinkedHashSet<>();
 		customizers.add(mock(RestTemplateRequestCustomizer.class));
 		customizers.add(mock(RestTemplateRequestCustomizer.class));

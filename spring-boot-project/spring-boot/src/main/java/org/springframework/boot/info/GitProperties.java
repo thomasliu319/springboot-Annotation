@@ -16,9 +16,9 @@
 
 package org.springframework.boot.info;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Properties;
 
 /**
@@ -108,11 +108,11 @@ public class GitProperties extends InfoProperties {
 		if (epoch != null) {
 			return String.valueOf(epoch);
 		}
-		DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
+		SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
 		try {
-			return String.valueOf(format.parse(s, Instant::from).toEpochMilli());
+			return String.valueOf(format.parse(s).getTime());
 		}
-		catch (DateTimeParseException ex) {
+		catch (ParseException ex) {
 			return s;
 		}
 	}

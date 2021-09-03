@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
@@ -49,10 +48,8 @@ class MongoSessionConfiguration {
 	public static class SpringBootMongoHttpSessionConfiguration extends MongoHttpSessionConfiguration {
 
 		@Autowired
-		public void customize(SessionProperties sessionProperties, MongoSessionProperties mongoSessionProperties,
-				ServerProperties serverProperties) {
-			Duration timeout = sessionProperties
-					.determineTimeout(() -> serverProperties.getServlet().getSession().getTimeout());
+		public void customize(SessionProperties sessionProperties, MongoSessionProperties mongoSessionProperties) {
+			Duration timeout = sessionProperties.getTimeout();
 			if (timeout != null) {
 				setMaxInactiveIntervalInSeconds((int) timeout.getSeconds());
 			}

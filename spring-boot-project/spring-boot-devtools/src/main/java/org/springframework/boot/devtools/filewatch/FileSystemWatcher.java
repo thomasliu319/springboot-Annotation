@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.util.Assert;
 
 /**
- * Watches specific directories for file changes.
+ * Watches specific folders for file changes.
  *
  * @author Andy Clement
  * @author Phillip Webb
@@ -54,11 +54,9 @@ public class FileSystemWatcher {
 
 	private final long quietPeriod;
 
-	private final SnapshotStateRepository snapshotStateRepository;
-
 	private final AtomicInteger remainingScans = new AtomicInteger(-1);
 
-	private final Map<File, DirectorySnapshot> directories = new HashMap<>();
+	private final Map<File, FolderSnapshot> folders = new HashMap<>();
 
 	private Thread watchThread;
 
@@ -81,20 +79,6 @@ public class FileSystemWatcher {
 	 * ensure that updates have completed
 	 */
 	public FileSystemWatcher(boolean daemon, Duration pollInterval, Duration quietPeriod) {
-		this(daemon, pollInterval, quietPeriod, null);
-	}
-
-	/**
-	 * Create a new {@link FileSystemWatcher} instance.
-	 * @param daemon if a daemon thread used to monitor changes
-	 * @param pollInterval the amount of time to wait between checking for changes
-	 * @param quietPeriod the amount of time required after a change has been detected to
-	 * ensure that updates have completed
-	 * @param snapshotStateRepository the snapshot state repository
-	 * @since 2.4.0
-	 */
-	public FileSystemWatcher(boolean daemon, Duration pollInterval, Duration quietPeriod,
-			SnapshotStateRepository snapshotStateRepository) {
 		Assert.notNull(pollInterval, "PollInterval must not be null");
 		Assert.notNull(quietPeriod, "QuietPeriod must not be null");
 		Assert.isTrue(pollInterval.toMillis() > 0, "PollInterval must be positive");
@@ -104,8 +88,6 @@ public class FileSystemWatcher {
 		this.daemon = daemon;
 		this.pollInterval = pollInterval.toMillis();
 		this.quietPeriod = quietPeriod.toMillis();
-		this.snapshotStateRepository = (snapshotStateRepository != null) ? snapshotStateRepository
-				: SnapshotStateRepository.NONE;
 	}
 
 	/**
@@ -122,28 +104,30 @@ public class FileSystemWatcher {
 	}
 
 	/**
-	 * Add source directories to monitor. Cannot be called after the watcher has been
+	 * Add source folders to monitor. Cannot be called after the watcher has been
 	 * {@link #start() started}.
-	 * @param directories the directories to monitor
+	 * @param folders the folders to monitor
 	 */
-	public void addSourceDirectories(Iterable<File> directories) {
-		Assert.notNull(directories, "Directories must not be null");
+	public void addSourceFolders(Iterable<File> folders) {
+		Assert.notNull(folders, "Folders must not be null");
 		synchronized (this.monitor) {
-			directories.forEach(this::addSourceDirectory);
+			for (File folder : folders) {
+				addSourceFolder(folder);
+			}
 		}
 	}
 
 	/**
-	 * Add a source directory to monitor. Cannot be called after the watcher has been
+	 * Add a source folder to monitor. Cannot be called after the watcher has been
 	 * {@link #start() started}.
-	 * @param directory the directory to monitor
+	 * @param folder the folder to monitor
 	 */
-	public void addSourceDirectory(File directory) {
-		Assert.notNull(directory, "Directory must not be null");
-		Assert.isTrue(!directory.isFile(), () -> "Directory '" + directory + "' must not be a file");
+	public void addSourceFolder(File folder) {
+		Assert.notNull(folder, "Folder must not be null");
+		Assert.isTrue(!folder.isFile(), "Folder '" + folder + "' must not be a file");
 		synchronized (this.monitor) {
 			checkNotStarted();
-			this.directories.put(directory, null);
+			this.folders.put(folder, null);
 		}
 	}
 
@@ -164,16 +148,15 @@ public class FileSystemWatcher {
 	}
 
 	/**
-	 * Start monitoring the source directory for changes.
+	 * Start monitoring the source folder for changes.
 	 */
 	public void start() {
 		synchronized (this.monitor) {
-			createOrRestoreInitialSnapshots();
+			saveInitialSnapshots();
 			if (this.watchThread == null) {
-				Map<File, DirectorySnapshot> localDirectories = new HashMap<>(this.directories);
-				Watcher watcher = new Watcher(this.remainingScans, new ArrayList<>(this.listeners), this.triggerFilter,
-						this.pollInterval, this.quietPeriod, localDirectories, this.snapshotStateRepository);
-				this.watchThread = new Thread(watcher);
+				Map<File, FolderSnapshot> localFolders = new HashMap<>(this.folders);
+				this.watchThread = new Thread(new Watcher(this.remainingScans, new ArrayList<>(this.listeners),
+						this.triggerFilter, this.pollInterval, this.quietPeriod, localFolders));
 				this.watchThread.setName("File Watcher");
 				this.watchThread.setDaemon(this.daemon);
 				this.watchThread.start();
@@ -181,24 +164,19 @@ public class FileSystemWatcher {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void createOrRestoreInitialSnapshots() {
-		Map<File, DirectorySnapshot> restored = (Map<File, DirectorySnapshot>) this.snapshotStateRepository.restore();
-		this.directories.replaceAll((f, v) -> {
-			DirectorySnapshot restoredSnapshot = (restored != null) ? restored.get(f) : null;
-			return (restoredSnapshot != null) ? restoredSnapshot : new DirectorySnapshot(f);
-		});
+	private void saveInitialSnapshots() {
+		this.folders.replaceAll((f, v) -> new FolderSnapshot(f));
 	}
 
 	/**
-	 * Stop monitoring the source directories.
+	 * Stop monitoring the source folders.
 	 */
 	public void stop() {
 		stopAfter(0);
 	}
 
 	/**
-	 * Stop monitoring the source directories.
+	 * Stop monitoring the source folders.
 	 * @param remainingScans the number of remaining scans
 	 */
 	void stopAfter(int remainingScans) {
@@ -235,21 +213,16 @@ public class FileSystemWatcher {
 
 		private final long quietPeriod;
 
-		private Map<File, DirectorySnapshot> directories;
-
-		private SnapshotStateRepository snapshotStateRepository;
+		private Map<File, FolderSnapshot> folders;
 
 		private Watcher(AtomicInteger remainingScans, List<FileChangeListener> listeners, FileFilter triggerFilter,
-				long pollInterval, long quietPeriod, Map<File, DirectorySnapshot> directories,
-				SnapshotStateRepository snapshotStateRepository) {
+				long pollInterval, long quietPeriod, Map<File, FolderSnapshot> folders) {
 			this.remainingScans = remainingScans;
 			this.listeners = listeners;
 			this.triggerFilter = triggerFilter;
 			this.pollInterval = pollInterval;
 			this.quietPeriod = quietPeriod;
-			this.directories = directories;
-			this.snapshotStateRepository = snapshotStateRepository;
-
+			this.folders = folders;
 		}
 
 		@Override
@@ -271,57 +244,56 @@ public class FileSystemWatcher {
 
 		private void scan() throws InterruptedException {
 			Thread.sleep(this.pollInterval - this.quietPeriod);
-			Map<File, DirectorySnapshot> previous;
-			Map<File, DirectorySnapshot> current = this.directories;
+			Map<File, FolderSnapshot> previous;
+			Map<File, FolderSnapshot> current = this.folders;
 			do {
 				previous = current;
 				current = getCurrentSnapshots();
 				Thread.sleep(this.quietPeriod);
 			}
 			while (isDifferent(previous, current));
-			if (isDifferent(this.directories, current)) {
+			if (isDifferent(this.folders, current)) {
 				updateSnapshots(current.values());
 			}
 		}
 
-		private boolean isDifferent(Map<File, DirectorySnapshot> previous, Map<File, DirectorySnapshot> current) {
+		private boolean isDifferent(Map<File, FolderSnapshot> previous, Map<File, FolderSnapshot> current) {
 			if (!previous.keySet().equals(current.keySet())) {
 				return true;
 			}
-			for (Map.Entry<File, DirectorySnapshot> entry : previous.entrySet()) {
-				DirectorySnapshot previousDirectory = entry.getValue();
-				DirectorySnapshot currentDirectory = current.get(entry.getKey());
-				if (!previousDirectory.equals(currentDirectory, this.triggerFilter)) {
+			for (Map.Entry<File, FolderSnapshot> entry : previous.entrySet()) {
+				FolderSnapshot previousFolder = entry.getValue();
+				FolderSnapshot currentFolder = current.get(entry.getKey());
+				if (!previousFolder.equals(currentFolder, this.triggerFilter)) {
 					return true;
 				}
 			}
 			return false;
 		}
 
-		private Map<File, DirectorySnapshot> getCurrentSnapshots() {
-			Map<File, DirectorySnapshot> snapshots = new LinkedHashMap<>();
-			for (File directory : this.directories.keySet()) {
-				snapshots.put(directory, new DirectorySnapshot(directory));
+		private Map<File, FolderSnapshot> getCurrentSnapshots() {
+			Map<File, FolderSnapshot> snapshots = new LinkedHashMap<>();
+			for (File folder : this.folders.keySet()) {
+				snapshots.put(folder, new FolderSnapshot(folder));
 			}
 			return snapshots;
 		}
 
-		private void updateSnapshots(Collection<DirectorySnapshot> snapshots) {
-			Map<File, DirectorySnapshot> updated = new LinkedHashMap<>();
+		private void updateSnapshots(Collection<FolderSnapshot> snapshots) {
+			Map<File, FolderSnapshot> updated = new LinkedHashMap<>();
 			Set<ChangedFiles> changeSet = new LinkedHashSet<>();
-			for (DirectorySnapshot snapshot : snapshots) {
-				DirectorySnapshot previous = this.directories.get(snapshot.getDirectory());
-				updated.put(snapshot.getDirectory(), snapshot);
+			for (FolderSnapshot snapshot : snapshots) {
+				FolderSnapshot previous = this.folders.get(snapshot.getFolder());
+				updated.put(snapshot.getFolder(), snapshot);
 				ChangedFiles changedFiles = previous.getChangedFiles(snapshot, this.triggerFilter);
 				if (!changedFiles.getFiles().isEmpty()) {
 					changeSet.add(changedFiles);
 				}
 			}
-			this.directories = updated;
-			this.snapshotStateRepository.save(updated);
 			if (!changeSet.isEmpty()) {
 				fireListeners(Collections.unmodifiableSet(changeSet));
 			}
+			this.folders = updated;
 		}
 
 		private void fireListeners(Set<ChangedFiles> changeSet) {

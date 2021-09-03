@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,9 @@ import com.gargoylesoftware.htmlunit.WebConnection;
 import com.gargoylesoftware.htmlunit.WebRequest;
 import com.gargoylesoftware.htmlunit.WebResponse;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.mock.env.MockEnvironment;
 
@@ -45,11 +44,14 @@ import static org.mockito.Mockito.verify;
  * @author Phillip Webb
  */
 @SuppressWarnings("resource")
-@ExtendWith(MockitoExtension.class)
 class LocalHostWebClientTests {
 
 	@Captor
 	private ArgumentCaptor<WebRequest> requestCaptor;
+
+	LocalHostWebClientTests() {
+		MockitoAnnotations.initMocks(this);
+	}
 
 	@Test
 	void createWhenEnvironmentIsNullWillThrowException() {

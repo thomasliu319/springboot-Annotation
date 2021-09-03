@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
 
 /**
  * Configuration properties to configure Jackson.
@@ -50,8 +51,14 @@ public class JacksonProperties {
 	private String dateFormat;
 
 	/**
-	 * One of the constants on Jackson's PropertyNamingStrategies. Can also be a
-	 * fully-qualified class name of a PropertyNamingStrategy implementation.
+	 * Joda date time format string. If not configured, "date-format" is used as a
+	 * fallback if it is configured with a format string.
+	 */
+	private String jodaDateTimeFormat;
+
+	/**
+	 * One of the constants on Jackson's PropertyNamingStrategy. Can also be a
+	 * fully-qualified class name of a PropertyNamingStrategy subclass.
 	 */
 	private String propertyNamingStrategy;
 
@@ -93,17 +100,6 @@ public class JacksonProperties {
 	private JsonInclude.Include defaultPropertyInclusion;
 
 	/**
-	 * Global default setting (if any) for leniency.
-	 */
-	private Boolean defaultLeniency;
-
-	/**
-	 * Strategy to use to to auto-detect constructor, and in particular behavior with
-	 * single-argument constructors.
-	 */
-	private ConstructorDetectorStrategy constructorDetector;
-
-	/**
 	 * Time zone used when formatting dates. For instance, "America/Los_Angeles" or
 	 * "GMT+10".
 	 */
@@ -120,6 +116,19 @@ public class JacksonProperties {
 
 	public void setDateFormat(String dateFormat) {
 		this.dateFormat = dateFormat;
+	}
+
+	@Deprecated
+	@DeprecatedConfigurationProperty(replacement = "dateFormat",
+			reason = "Auto-configuration for Jackson's Joda-Time integration is "
+					+ "deprecated in favor of its Java 8 Time integration")
+	public String getJodaDateTimeFormat() {
+		return this.jodaDateTimeFormat;
+	}
+
+	@Deprecated
+	public void setJodaDateTimeFormat(String jodaDataTimeFormat) {
+		this.jodaDateTimeFormat = jodaDataTimeFormat;
 	}
 
 	public String getPropertyNamingStrategy() {
@@ -162,22 +171,6 @@ public class JacksonProperties {
 		this.defaultPropertyInclusion = defaultPropertyInclusion;
 	}
 
-	public Boolean getDefaultLeniency() {
-		return this.defaultLeniency;
-	}
-
-	public void setDefaultLeniency(Boolean defaultLeniency) {
-		this.defaultLeniency = defaultLeniency;
-	}
-
-	public ConstructorDetectorStrategy getConstructorDetector() {
-		return this.constructorDetector;
-	}
-
-	public void setConstructorDetector(ConstructorDetectorStrategy constructorDetector) {
-		this.constructorDetector = constructorDetector;
-	}
-
 	public TimeZone getTimeZone() {
 		return this.timeZone;
 	}
@@ -192,31 +185,6 @@ public class JacksonProperties {
 
 	public void setLocale(Locale locale) {
 		this.locale = locale;
-	}
-
-	public enum ConstructorDetectorStrategy {
-
-		/**
-		 * Use heuristics to see if "properties" mode is to be used.
-		 */
-		DEFAULT,
-
-		/**
-		 * Assume "properties" mode if not explicitly annotated otherwise.
-		 */
-		USE_PROPERTIES_BASED,
-
-		/**
-		 * Assume "delegating" mode if not explicitly annotated otherwise.
-		 */
-		USE_DELEGATING,
-
-		/**
-		 * Refuse to decide implicit mode and instead throw an InvalidDefinitionException
-		 * for ambiguous cases.
-		 */
-		EXPLICIT_ONLY;
-
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ class TypeUtils {
 		if (((TypeElement) this.types.asElement(type)).getQualifiedName().contentEquals(Collection.class.getName())) {
 			DeclaredType declaredType = (DeclaredType) type;
 			// raw type, just "Collection"
-			if (declaredType.getTypeArguments().isEmpty()) {
+			if (declaredType.getTypeArguments().size() == 0) {
 				return this.types.getDeclaredType(this.env.getElementUtils().getTypeElement(Object.class.getName()));
 			}
 			// return type argument to Collection<...>
@@ -180,7 +180,7 @@ class TypeUtils {
 		if (javadoc != null) {
 			javadoc = NEW_LINE_PATTERN.matcher(javadoc).replaceAll("").trim();
 		}
-		return (javadoc == null || javadoc.isEmpty()) ? null : javadoc;
+		return "".equals(javadoc) ? null : javadoc;
 	}
 
 	/**

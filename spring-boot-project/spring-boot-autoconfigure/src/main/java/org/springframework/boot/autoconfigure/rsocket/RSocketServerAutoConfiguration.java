@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.boot.rsocket.context.RSocketServerBootstrap;
 import org.springframework.boot.rsocket.netty.NettyRSocketServerFactory;
 import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
 import org.springframework.boot.rsocket.server.RSocketServerFactory;
+import org.springframework.boot.rsocket.server.ServerRSocketFactoryProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
@@ -65,22 +66,23 @@ public class RSocketServerAutoConfiguration {
 
 	@Conditional(OnRSocketWebServerCondition.class)
 	@Configuration(proxyBeanMethods = false)
-	static class WebFluxServerConfiguration {
+	static class WebFluxServerAutoConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean
+		@SuppressWarnings("deprecation")
 		RSocketWebSocketNettyRouteProvider rSocketWebsocketRouteProvider(RSocketProperties properties,
-				RSocketMessageHandler messageHandler, ObjectProvider<RSocketServerCustomizer> customizers) {
+				RSocketMessageHandler messageHandler, ObjectProvider<ServerRSocketFactoryProcessor> processors,
+				ObjectProvider<RSocketServerCustomizer> customizers) {
 			return new RSocketWebSocketNettyRouteProvider(properties.getServer().getMappingPath(),
-					messageHandler.responder(), customizers.orderedStream());
+					messageHandler.responder(), processors.orderedStream(), customizers.orderedStream());
 		}
 
 	}
 
 	@ConditionalOnProperty(prefix = "spring.rsocket.server", name = "port")
-	@ConditionalOnClass(ReactorResourceFactory.class)
 	@Configuration(proxyBeanMethods = false)
-	static class EmbeddedServerConfiguration {
+	static class EmbeddedServerAutoConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean
@@ -90,7 +92,9 @@ public class RSocketServerAutoConfiguration {
 
 		@Bean
 		@ConditionalOnMissingBean
+		@SuppressWarnings("deprecation")
 		RSocketServerFactory rSocketServerFactory(RSocketProperties properties, ReactorResourceFactory resourceFactory,
+				ObjectProvider<ServerRSocketFactoryProcessor> processors,
 				ObjectProvider<RSocketServerCustomizer> customizers) {
 			NettyRSocketServerFactory factory = new NettyRSocketServerFactory();
 			factory.setResourceFactory(resourceFactory);
@@ -98,9 +102,8 @@ public class RSocketServerAutoConfiguration {
 			PropertyMapper map = PropertyMapper.get().alwaysApplyingWhenNonNull();
 			map.from(properties.getServer().getAddress()).to(factory::setAddress);
 			map.from(properties.getServer().getPort()).to(factory::setPort);
-			map.from(properties.getServer().getFragmentSize()).to(factory::setFragmentSize);
-			map.from(properties.getServer().getSsl()).to(factory::setSsl);
 			factory.setRSocketServerCustomizers(customizers.orderedStream().collect(Collectors.toList()));
+			factory.setSocketFactoryProcessors(processors.orderedStream().collect(Collectors.toList()));
 			return factory;
 		}
 

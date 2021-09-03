@@ -164,7 +164,7 @@ public final class WebMvcTags {
 	}
 
 	/**
-	 * Creates an {@code exception} tag based on the {@link Class#getSimpleName() simple
+	 * Creates a {@code exception} tag based on the {@link Class#getSimpleName() simple
 	 * name} of the class of the given {@code exception}.
 	 * @param exception the exception, may be {@code null}
 	 * @return the exception tag derived from the exception

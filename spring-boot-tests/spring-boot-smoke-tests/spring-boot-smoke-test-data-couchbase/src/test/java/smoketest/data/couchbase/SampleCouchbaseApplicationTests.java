@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
 
 package smoketest.data.couchbase;
 
-import com.couchbase.client.core.error.AmbiguousTimeoutException;
+import java.net.ConnectException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -44,12 +45,12 @@ class SampleCouchbaseApplicationTests {
 	}
 
 	private boolean serverNotRunning(RuntimeException ex) {
+		@SuppressWarnings("serial")
 		NestedCheckedException nested = new NestedCheckedException("failed", ex) {
 		};
-		if (nested.contains(AmbiguousTimeoutException.class)) {
+		if (nested.contains(ConnectException.class)) {
 			Throwable root = nested.getRootCause();
-			// This is not ideal, we should have a better way to know what is going on
-			if (root.getMessage().contains("QueryRequest, Reason: TIMEOUT")) {
+			if (root.getMessage().contains("Connection refused")) {
 				return true;
 			}
 		}

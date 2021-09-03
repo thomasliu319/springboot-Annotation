@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ import org.springframework.core.env.Environment;
  *
  * @author Mark Paluch
  * @author Stephane Nicoll
- * @author Scott Frederick
  * @since 2.0.0
  */
 @Configuration(proxyBeanMethods = false)
@@ -54,28 +53,12 @@ public class MongoReactiveAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public MongoClient reactiveStreamsMongoClient(
-			ObjectProvider<MongoClientSettingsBuilderCustomizer> builderCustomizers, MongoClientSettings settings) {
-		ReactiveMongoClientFactory factory = new ReactiveMongoClientFactory(
+	public MongoClient reactiveStreamsMongoClient(MongoProperties properties, Environment environment,
+			ObjectProvider<MongoClientSettingsBuilderCustomizer> builderCustomizers,
+			ObjectProvider<MongoClientSettings> settings) {
+		ReactiveMongoClientFactory factory = new ReactiveMongoClientFactory(properties, environment,
 				builderCustomizers.orderedStream().collect(Collectors.toList()));
-		return factory.createMongoClient(settings);
-	}
-
-	@Configuration(proxyBeanMethods = false)
-	@ConditionalOnMissingBean(MongoClientSettings.class)
-	static class MongoClientSettingsConfiguration {
-
-		@Bean
-		MongoClientSettings mongoClientSettings() {
-			return MongoClientSettings.builder().build();
-		}
-
-		@Bean
-		MongoPropertiesClientSettingsBuilderCustomizer mongoPropertiesCustomizer(MongoProperties properties,
-				Environment environment) {
-			return new MongoPropertiesClientSettingsBuilderCustomizer(properties, environment);
-		}
-
+		return factory.createMongoClient(settings.getIfAvailable());
 	}
 
 	@Configuration(proxyBeanMethods = false)

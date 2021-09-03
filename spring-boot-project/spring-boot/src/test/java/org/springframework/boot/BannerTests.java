@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,12 @@ package org.springframework.boot;
 import java.io.PrintStream;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
 import org.springframework.boot.Banner.Mode;
 import org.springframework.boot.testsupport.system.CapturedOutput;
@@ -46,7 +47,7 @@ import static org.mockito.Mockito.verify;
  * @author Michael Stummvoll
  * @author Michael Simons
  */
-@ExtendWith({ MockitoExtension.class, OutputCaptureExtension.class })
+@ExtendWith(OutputCaptureExtension.class)
 class BannerTests {
 
 	private ConfigurableApplicationContext context;
@@ -60,6 +61,11 @@ class BannerTests {
 
 	@Captor
 	private ArgumentCaptor<Class<?>> sourceClassCaptor;
+
+	@BeforeEach
+	void setup() {
+		MockitoAnnotations.initMocks(this);
+	}
 
 	@Test
 	void testDefaultBanner(CapturedOutput output) {

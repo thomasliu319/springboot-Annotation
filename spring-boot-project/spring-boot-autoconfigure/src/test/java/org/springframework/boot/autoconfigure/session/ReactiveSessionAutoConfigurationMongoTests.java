@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,8 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReactiveSessionAutoConfigurationMongoTests extends AbstractSessionAutoConfigurationTests {
 
 	private final ReactiveWebApplicationContextRunner contextRunner = new ReactiveWebApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(SessionAutoConfiguration.class))
-			.withPropertyValues("spring.mongodb.embedded.version=3.5.5");
+			.withConfiguration(AutoConfigurations.of(SessionAutoConfiguration.class));
 
 	@Test
 	void defaultConfig() {
@@ -63,19 +62,6 @@ class ReactiveSessionAutoConfigurationMongoTests extends AbstractSessionAutoConf
 	}
 
 	@Test
-	void defaultConfigWithCustomTimeout() {
-		this.contextRunner.withPropertyValues("spring.session.store-type=mongodb", "spring.session.timeout=1m")
-				.withConfiguration(AutoConfigurations.of(EmbeddedMongoAutoConfiguration.class,
-						MongoAutoConfiguration.class, MongoDataAutoConfiguration.class,
-						MongoReactiveAutoConfiguration.class, MongoReactiveDataAutoConfiguration.class))
-				.run((context) -> {
-					ReactiveMongoSessionRepository repository = validateSessionRepository(context,
-							ReactiveMongoSessionRepository.class);
-					assertThat(repository).hasFieldOrPropertyWithValue("maxInactiveIntervalInSeconds", 60);
-				});
-	}
-
-	@Test
 	void mongoSessionStoreWithCustomizations() {
 		this.contextRunner
 				.withConfiguration(AutoConfigurations.of(EmbeddedMongoAutoConfiguration.class,
@@ -91,8 +77,6 @@ class ReactiveSessionAutoConfigurationMongoTests extends AbstractSessionAutoConf
 			ReactiveMongoSessionRepository repository = validateSessionRepository(context,
 					ReactiveMongoSessionRepository.class);
 			assertThat(repository.getCollectionName()).isEqualTo(collectionName);
-			assertThat(repository).hasFieldOrPropertyWithValue("maxInactiveIntervalInSeconds",
-					ReactiveMongoSessionRepository.DEFAULT_INACTIVE_INTERVAL);
 		};
 	}
 

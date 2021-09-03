@@ -60,7 +60,7 @@ public class OAuth2ClientProperties implements InitializingBean {
 	}
 
 	public void validate() {
-		getRegistration().values().forEach(this::validateRegistration);
+		this.getRegistration().values().forEach(this::validateRegistration);
 	}
 
 	private void validateRegistration(Registration registration) {
@@ -108,8 +108,7 @@ public class OAuth2ClientProperties implements InitializingBean {
 		private String redirectUri;
 
 		/**
-		 * Authorization scopes. When left blank the provider's default scopes, if any,
-		 * will be used.
+		 * Authorization scopes. May be left blank when using a pre-defined provider.
 		 */
 		private Set<String> scope;
 

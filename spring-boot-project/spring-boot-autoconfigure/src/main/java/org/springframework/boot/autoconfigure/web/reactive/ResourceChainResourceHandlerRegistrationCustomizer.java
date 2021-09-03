@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 
 package org.springframework.boot.autoconfigure.web.reactive;
 
-import org.springframework.boot.autoconfigure.web.WebProperties.Resources;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.web.ResourceProperties;
 import org.springframework.web.reactive.config.ResourceChainRegistration;
 import org.springframework.web.reactive.config.ResourceHandlerRegistration;
+import org.springframework.web.reactive.resource.AppCacheManifestTransformer;
 import org.springframework.web.reactive.resource.EncodedResourceResolver;
 import org.springframework.web.reactive.resource.ResourceResolver;
 import org.springframework.web.reactive.resource.VersionResourceResolver;
@@ -31,29 +33,29 @@ import org.springframework.web.reactive.resource.VersionResourceResolver;
  */
 class ResourceChainResourceHandlerRegistrationCustomizer implements ResourceHandlerRegistrationCustomizer {
 
-	private final Resources resourceProperties;
-
-	ResourceChainResourceHandlerRegistrationCustomizer(Resources resources) {
-		this.resourceProperties = resources;
-	}
+	@Autowired
+	private ResourceProperties resourceProperties = new ResourceProperties();
 
 	@Override
 	public void customize(ResourceHandlerRegistration registration) {
-		Resources.Chain properties = this.resourceProperties.getChain();
+		ResourceProperties.Chain properties = this.resourceProperties.getChain();
 		configureResourceChain(properties, registration.resourceChain(properties.isCache()));
 	}
 
-	private void configureResourceChain(Resources.Chain properties, ResourceChainRegistration chain) {
-		Resources.Chain.Strategy strategy = properties.getStrategy();
+	private void configureResourceChain(ResourceProperties.Chain properties, ResourceChainRegistration chain) {
+		ResourceProperties.Strategy strategy = properties.getStrategy();
 		if (properties.isCompressed()) {
 			chain.addResolver(new EncodedResourceResolver());
 		}
 		if (strategy.getFixed().isEnabled() || strategy.getContent().isEnabled()) {
 			chain.addResolver(getVersionResourceResolver(strategy));
 		}
+		if (properties.isHtmlApplicationCache()) {
+			chain.addTransformer(new AppCacheManifestTransformer());
+		}
 	}
 
-	private ResourceResolver getVersionResourceResolver(Resources.Chain.Strategy properties) {
+	private ResourceResolver getVersionResourceResolver(ResourceProperties.Strategy properties) {
 		VersionResourceResolver resolver = new VersionResourceResolver();
 		if (properties.getFixed().isEnabled()) {
 			String version = properties.getFixed().getVersion();

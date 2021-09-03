@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,8 +40,7 @@ public abstract class AbstractDependencyFilterMojo extends AbstractMojo {
 
 	/**
 	 * Collection of artifact definitions to include. The {@link Include} element defines
-	 * mandatory {@code groupId} and {@code artifactId} properties and an optional
-	 * mandatory {@code groupId} and {@code artifactId} properties and an optional
+	 * a {@code groupId} and {@code artifactId} mandatory properties and an optional
 	 * {@code classifier} property.
 	 * @since 1.2.0
 	 */
@@ -50,7 +49,7 @@ public abstract class AbstractDependencyFilterMojo extends AbstractMojo {
 
 	/**
 	 * Collection of artifact definitions to exclude. The {@link Exclude} element defines
-	 * mandatory {@code groupId} and {@code artifactId} properties and an optional
+	 * a {@code groupId} and {@code artifactId} mandatory properties and an optional
 	 * {@code classifier} property.
 	 * @since 1.1.0
 	 */
@@ -76,7 +75,7 @@ public abstract class AbstractDependencyFilterMojo extends AbstractMojo {
 		this.excludeGroupIds = excludeGroupIds;
 	}
 
-	protected final Set<Artifact> filterDependencies(Set<Artifact> dependencies, FilterArtifacts filters)
+	protected Set<Artifact> filterDependencies(Set<Artifact> dependencies, FilterArtifacts filters)
 			throws MojoExecutionException {
 		try {
 			Set<Artifact> filtered = new LinkedHashSet<>(dependencies);
@@ -105,7 +104,6 @@ public abstract class AbstractDependencyFilterMojo extends AbstractMojo {
 		if (this.excludes != null && !this.excludes.isEmpty()) {
 			filters.addFilter(new ExcludeFilter(this.excludes));
 		}
-		filters.addFilter(new JarTypeFilter());
 		return filters;
 	}
 

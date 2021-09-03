@@ -124,31 +124,12 @@ class ArtemisAutoConfigurationTests {
 	}
 
 	@Test
-	void nativeConnectionFactoryCustomBrokerUrl() {
-		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
-				.withPropertyValues("spring.artemis.mode:native", "spring.artemis.broker-url:tcp://192.168.1.144:9876")
-				.run((context) -> assertNettyConnectionFactory(
-						getActiveMQConnectionFactory(getConnectionFactory(context)), "192.168.1.144", 9876));
-	}
-
-	@Test
-	@Deprecated
 	void nativeConnectionFactoryCustomHost() {
 		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
 				.withPropertyValues("spring.artemis.mode:native", "spring.artemis.host:192.168.1.144",
 						"spring.artemis.port:9876")
 				.run((context) -> assertNettyConnectionFactory(
 						getActiveMQConnectionFactory(getConnectionFactory(context)), "192.168.1.144", 9876));
-	}
-
-	@Test
-	@Deprecated
-	void nativeConnectionFactoryCustomBrokerUrlAndHost() {
-		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
-				.withPropertyValues("spring.artemis.mode:native", "spring.artemis.host:192.168.1.144",
-						"spring.artemis.port:9876", "spring.artemis.broker-url=tcp://192.168.1.221:6543")
-				.run((context) -> assertNettyConnectionFactory(
-						getActiveMQConnectionFactory(getConnectionFactory(context)), "192.168.1.221", 6543));
 	}
 
 	@Test
@@ -264,13 +245,13 @@ class ArtemisAutoConfigurationTests {
 
 	@Test
 	void embeddedWithPersistentMode(@TempDir Path temp) throws IOException {
-		File dataDirectory = Files.createTempDirectory(temp, null).toFile();
+		File dataFolder = Files.createTempDirectory(temp, null).toFile();
 		final String messageId = UUID.randomUUID().toString();
 		// Start the server and post a message to some queue
 		this.contextRunner.withUserConfiguration(EmptyConfiguration.class)
 				.withPropertyValues("spring.artemis.embedded.queues=TestQueue",
 						"spring.artemis.embedded.persistent:true",
-						"spring.artemis.embedded.dataDirectory:" + dataDirectory.getAbsolutePath())
+						"spring.artemis.embedded.dataDirectory:" + dataFolder.getAbsolutePath())
 				.run((context) -> context.getBean(JmsTemplate.class).send("TestQueue",
 						(session) -> session.createTextMessage(messageId)))
 				.run((context) -> {
@@ -396,11 +377,7 @@ class ArtemisAutoConfigurationTests {
 		TransportConfiguration transportConfig = getSingleTransportConfiguration(connectionFactory);
 		assertThat(transportConfig.getFactoryClassName()).isEqualTo(NettyConnectorFactory.class.getName());
 		assertThat(transportConfig.getParams().get("host")).isEqualTo(host);
-		Object transportConfigPort = transportConfig.getParams().get("port");
-		if (transportConfigPort instanceof String) {
-			transportConfigPort = Integer.parseInt((String) transportConfigPort);
-		}
-		assertThat(transportConfigPort).isEqualTo(port);
+		assertThat(transportConfig.getParams().get("port")).isEqualTo(port);
 		return transportConfig;
 	}
 
