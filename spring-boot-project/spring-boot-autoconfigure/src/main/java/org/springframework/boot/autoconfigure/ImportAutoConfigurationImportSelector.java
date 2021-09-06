@@ -41,7 +41,7 @@ import org.springframework.util.ObjectUtils;
 /**
  * Variant of {@link AutoConfigurationImportSelector} for
  * {@link ImportAutoConfiguration @ImportAutoConfiguration}.
- *
+ * 导入自动配置相关的资源
  * @author Phillip Webb
  * @author Andy Wilkinson
  */

@@ -39,6 +39,9 @@ import org.springframework.data.repository.Repository;
  * auto-configuration} and {@link ComponentScan component scanning}. This is a convenience
  * annotation that is equivalent to declaring {@code @Configuration},
  * {@code @EnableAutoConfiguration} and {@code @ComponentScan}.
+ *@SpringBootApplication 注解，它在 spring-boot-autoconfigure 模块中。
+ * 所以，我们使用 Spring Boot 项目时，如果不想使用自动配置功能，就不用引入它。
+ * 当然，我们貌似不太会存在这样的需求，是吧~
  *
  * @author Phillip Webb
  * @author Stephane Nicoll
@@ -49,10 +52,25 @@ import org.springframework.data.repository.Repository;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
+/**
+ * java.lang.annotation.@Inherited注解，使用此注解声明出来的自定义注解，在使用
+ * 此注解时，如果注解在类上面，子类会自动继承此注解，否则的话，子类不会继承此注解。
+ * 这里一定要记住，使用@Inherited声明出来的注解，只有在类上使用时才会有效，对方法，属性等其他无效。
+ */
 @SpringBootConfiguration
+/**
+ * 它上面继承自@Configuration注解，所以两者功能也一致，可以将当前类内声明的一个或多个
+ * 以@Bean注解标记的方法的实例纳入到Spring容器中，并且实例名就是方法名
+ */
 @EnableAutoConfiguration
+/**
+ * 用于开启自动配置功能，是spring-boot-autoconfigure项目最核心的注解
+ */
 @ComponentScan(excludeFilters = { @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
 		@Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class) })
+/**
+ * 扫描指定路径下的Component(@Componment,@Configuration,@Service)
+ */
 public @interface SpringBootApplication {
 
 	/**
